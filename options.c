@@ -51,12 +51,12 @@ void parse_options(int argc, char **argv, Options *opt){
 					fprintf(stderr, "Invalid taxonomy file\n");
 				break;
 			case 'n':
-				success = sscanf(optarg, "%d", opt->number_of_clusters);
+				success = sscanf(optarg, "%d", &(opt->number_of_clusters));
 				if (!success)
 					fprintf(stderr, "Could not read number of clusters\n");
 				break;
 			case 'k':
-				success = sscanf(optarg, "%d", opt->number_of_kseqs);
+				success = sscanf(optarg, "%d", &(opt->number_of_kseqs));
 				if (!success)
 					fprintf(stderr, "Could not read number of initial sequences to choose\n");
 				break;

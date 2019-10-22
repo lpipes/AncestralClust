@@ -289,7 +289,7 @@ int NJ(node** tree, double** distMat,char*** clusters, int clusterSize,int which
 	if (distMat[0][1] > MINBL*2.0)  // HERE WE DISALLOW NEGATIVE BRANCHLENGTHS!  IS THIS THE BEST THING TO DO?
 		tree[whichTree][child1].bl = tree[whichTree][child2].bl = distMat[0][1]/2.0;
 	else tree[whichTree][child1].bl = tree[whichTree][child2].bl = MINBL;
-	//for (i=0; i<KSEQ+1; i++){
+	//for (i=0; i<opt.number_of_kseqs+1; i++){
 	//	free(distMat[i]);
 	//}
 	//free(distMat);
@@ -332,15 +332,15 @@ void printtree(node** tree, int whichTree, int clusterSize){
 		printf("%i: up: %i %i, down: %i, bl: %f, nd: %d, name: %s\n",i,tree[whichTree][i].up[0],tree[whichTree][i].up[1],tree[whichTree][i].down,tree[whichTree][i].bl/*totsites*/,tree[whichTree][i].nd,tree[whichTree][i].name);
 	}
 }
-void sortArray(double* branchLengths, int* indexArray){
+void sortArray(double* branchLengths, int* indexArray, Options opt){
 	int i,j, tmp2;
 	double tmp;
 	//Bubble Sort
-	for(i=0; i<2*KSEQ-1; i++){
+	for(i=0; i<2*opt.number_of_kseqs-1; i++){
 		indexArray[i]=i;
 	}
-	for(i=0; i<2*KSEQ; i++){
-		for(j=i+1;j<2*KSEQ-1;j++){
+	for(i=0; i<2*opt.number_of_kseqs; i++){
+		for(j=i+1;j<2*opt.number_of_kseqs-1;j++){
 			if(branchLengths[i] < branchLengths[j]){
 				tmp=branchLengths[i];
 				branchLengths[i] = branchLengths[j];
@@ -351,7 +351,7 @@ void sortArray(double* branchLengths, int* indexArray){
 			}
 		}
 	}
-	/*for(i=0; i<2*KSEQ-1; i++){
+	/*for(i=0; i<2*opt.number_of_kseqs-1; i++){
 		printf("branchLengths[%d]: %lf\n",i,branchLengths[i]);
 	}*/
 }
@@ -359,7 +359,7 @@ int get_number_descendants(node** tree, int node, int whichTree){
 	if (tree[whichTree][node].up[0]==-1)  return (tree[whichTree][node].nd=1);
 	else return (tree[whichTree][node].nd=(get_number_descendants(tree,tree[whichTree][node].up[0],whichTree)+get_number_descendants(tree,tree[whichTree][node].up[1],whichTree)));
 }
-void printdescendants(node** tree, int node, char*** clusters, int clusterNumber, int whichTree){
+void printdescendants(node** tree, int node, char*** clusters, int clusterNumber, int whichTree, Options opt){
 	int child1 = tree[whichTree][node].up[0];
 	int child2 = tree[whichTree][node].up[1];
 	int i;
@@ -368,7 +368,7 @@ void printdescendants(node** tree, int node, char*** clusters, int clusterNumber
 	}
 	if (tree[whichTree][node].up[0]==-1 && tree[whichTree][node].up[1]==-1){
 		int count=0;
-		for(i=KSEQ-1; i>=0; i--){
+		for(i=opt.number_of_kseqs-1; i>=0; i--){
 			if (clusters[clusterNumber][i][0]=='\0'){
 				count=i;
 			}
@@ -376,8 +376,8 @@ void printdescendants(node** tree, int node, char*** clusters, int clusterNumber
 		printf("count %d node %d: %s\n",count,node,tree[whichTree][node].name);
 		strcpy(clusters[clusterNumber][count],tree[whichTree][node].name);
 	}else{
-		printdescendants(tree,child1,clusters,clusterNumber,whichTree);
-		printdescendants(tree,child2,clusters,clusterNumber,whichTree);
+		printdescendants(tree,child1,clusters,clusterNumber,whichTree,opt);
+		printdescendants(tree,child2,clusters,clusterNumber,whichTree,opt);
 	}
 }
 void clearDescendants(node** tree, int node, int whichTree){
@@ -392,21 +392,21 @@ void clearDescendants(node** tree, int node, int whichTree){
 		clearDescendants(tree,child2,whichTree);
 	}
 }
-int countNumInCluster(char*** clusters, int index){
+int countNumInCluster(char*** clusters, int index, Options opt){
 	int i,j;
-	for(i=0; i<KSEQ; i++){
+	for(i=0; i<opt.number_of_kseqs; i++){
 		if(clusters[index][i][0]!='\0'){
 			j=i;
 		}
 	}
 	return j+1;
 }
-void allocateMemForTreeArr(int numberOfClusters, int* clusterSize, node** treeArr){
+void allocateMemForTreeArr(int numberOfClusters, int* clusterSize, node** treeArr, Options opt){
 	int i,j;
 	treeArr=(node **)malloc(numberOfClusters*sizeof(node *));
 	for(i=0; i<numberOfClusters; i++){
-		treeArr[i]=malloc((2*KSEQ-1)*sizeof(node));
-		for(j=0; j<2*KSEQ-1; j++){
+		treeArr[i]=malloc((2*opt.number_of_kseqs-1)*sizeof(node));
+		for(j=0; j<2*opt.number_of_kseqs-1; j++){
 			treeArr[i][j].name = (char *)malloc(MAXNAME*sizeof(char));
 		}
 	}
@@ -584,10 +584,10 @@ void makeNewCluster(char*** clusters,int number_of_clusters, char* sequence_to_a
 void addToCluster(char*** clusters, char* sequence_to_add, int clusterNumber, int clusterSize){
 	strcpy(clusters[clusterNumber][clusterSize],sequence_to_add);
 }
-void printClusters(char*** clusters, int number_of_clusters, int* clusterSize, char** seqNames, char** sequences, int number_of_total_seqs, char** taxonomy){
+void printClusters(char*** clusters, int number_of_clusters, int* clusterSize, char** seqNames, char** sequences, int number_of_total_seqs, char** taxonomy, Options opt){
 	FILE *clusterFile, *clusterTaxFile;
 	char fileName[FASTA_MAXLINE];
-	char *directory = strdup("/space/s1/lenore/cluster/clusters");
+	char *directory = strdup(opt.output_directory);
 	int i, j, k;
 	for(i=1; i<number_of_clusters; i++){
 		snprintf(fileName,FASTA_MAXLINE,"%s/%d.fasta",directory,i);
@@ -600,8 +600,8 @@ void printClusters(char*** clusters, int number_of_clusters, int* clusterSize, c
 			for(k=0; k<number_of_total_seqs; k++){
 				if (strcmp(clusters[i][j],seqNames[k])==0){
 					fprintf(clusterFile,">%s\n",seqNames[k]);
-					fprintf(clusterFile,"%s\n",sequences[k]);
-					fprintf(clusterTaxFile,"%s\%s\n",seqNames[k],taxonomy[k]);
+					fprintf(clusterFile,"%s",sequences[k]);
+					fprintf(clusterTaxFile,"%s\t%s\n",seqNames[k],taxonomy[k]);
 				}
 			}
 		}
@@ -621,11 +621,11 @@ void readInTaxFile(FILE* taxonomyFile,char** taxonomy){
 		i++;
 	}
 }
-void print_taxonomy(char*** clusters, char** seqNames, char** taxonomy, int clusterNumber, int clusterSize, int* chooseK){
+void print_taxonomy(char*** clusters, char** seqNames, char** taxonomy, int clusterNumber, int clusterSize, int* chooseK, Options opt){
 	int i, j;
 	printf("cluster %d:\n",clusterNumber);
 	for(i=0; i<clusterSize; i++){
-		for(j=0; j<KSEQ; j++){
+		for(j=0; j<opt.number_of_kseqs; j++){
 			if (strcmp(clusters[clusterNumber][i],seqNames[chooseK[j]])==0){
 				printf("%s\t%s\n",seqNames[chooseK[j]],taxonomy[chooseK[j]]);
 			}
@@ -649,10 +649,10 @@ void freeDistMatAvg(double*** distMatAvg, int* clusterSize, int number_of_cluste
 	}
 	free(distMatAvg);
 }
-void freeSeqsInClusterAvg(char*** seqsInClusterAvg){
+void freeSeqsInClusterAvg(char*** seqsInClusterAvg, Options opt){
 	int i,j;
-	for(i=0; i<NCLUST-1; i++){
-		for(j=0; j<KSEQ; j++){
+	for(i=0; i<opt.number_of_clusters-1; i++){
+		for(j=0; j<opt.number_of_kseqs; j++){
 			free(seqsInClusterAvg[i][j]);
 		}
 		free(seqsInClusterAvg[i]);
@@ -662,10 +662,10 @@ void freeSeqsInClusterAvg(char*** seqsInClusterAvg){
 void freeTreeArr(node** tree,int* clusterSizes){
 	int i,j;
 }
-void freeClusters(char*** clusters){
+void freeClusters(char*** clusters,Options opt){
 	int i,j;
 	for(i=0; i<MAXNUMBEROFCLUSTERS; i++){
-		for(j=0; j<KSEQ; j++){
+		for(j=0; j<opt.number_of_kseqs; j++){
 			free(clusters[i][j]);
 		}
 		free(clusters[i]);
@@ -679,9 +679,9 @@ void freeSequences(char** sequences, int number_of_seqs){
 	}
 	free(sequences);
 }
-void freeSeqsInCluster(char** seqsInCluster){
+void freeSeqsInCluster(char** seqsInCluster, Options opt){
 	int i;
-	for(i=0; i<KSEQ; i++){
+	for(i=0; i<opt.number_of_kseqs; i++){
 		free(seqsInCluster[i]);
 	}
 	free(seqsInCluster);
@@ -695,7 +695,7 @@ int main(int argc, char **argv){
 	int number_of_sequences = 0;
 	int* fasta_specs = (int *)malloc(4*sizeof(int));
 	setNumSeq(fasta_for_clustering,fasta_specs);
-	fasta_specs[3] = NCLUST+1; //NUMBER OF CLUSTERS
+	fasta_specs[3] = opt.number_of_clusters+1; //NUMBER OF CLUSTERS
 	printf("Number of sequences: %d\n",fasta_specs[0]);
 	//printf("Longest sequence: %d\n",fasta_specs[1]);
 	//printf("Longest name: %d\n",fasta_specs[2]);
@@ -722,16 +722,16 @@ int main(int argc, char **argv){
 	if (( taxonomyFile = fopen(opt.taxonomy,"r")) == (FILE *) NULL ) fprintf(stderr,"TAXONOMY file could not be opened.\n");
 	readInTaxFile(taxonomyFile,taxonomy);
 	close(taxonomyFile);
-	int* chooseK = (int *)malloc(KSEQ*sizeof(int));
-	for(i=0; i<KSEQ; i++){
+	int* chooseK = (int *)malloc(opt.number_of_kseqs*sizeof(int));
+	for(i=0; i<opt.number_of_kseqs; i++){
 		chooseK[i]=-1;
 	}
 	int choosing=0;
 		srand(time(0));
 	while(choosing==0){
-		int random_number = generateRandom(fasta_specs[0]);
+		int random_number = generateRandom(fasta_specs[0]-1);
 		int index=0;
-		for(i=KSEQ; i>=0; i--){
+		for(i=opt.number_of_kseqs; i>=0; i--){
 			if (chooseK[i]==-1){
 				index=i;
 			}
@@ -745,26 +745,28 @@ int main(int argc, char **argv){
 		if (dontadd==0){
 			chooseK[index] = random_number;
 		}
-		if (chooseK[KSEQ-1]!=-1){
+		if (chooseK[opt.number_of_kseqs-1]!=-1){
 			choosing=1;
 		}
 	}
-	double** distMat = (double **)malloc((KSEQ+1)*sizeof(double *));
-	for(i=0; i<KSEQ+1; i++){
-		distMat[i] = (double *)malloc((KSEQ+1)*sizeof(double));
+	double** distMat = (double **)malloc((opt.number_of_kseqs+1)*sizeof(double *));
+	for(i=0; i<opt.number_of_kseqs+1; i++){
+		distMat[i] = (double *)malloc((opt.number_of_kseqs+1)*sizeof(double));
 	}
-	for(i=0; i<KSEQ+1; i++){
-		for(j=0; j<KSEQ+1; j++){
+	for(i=0; i<opt.number_of_kseqs+1; i++){
+		for(j=0; j<opt.number_of_kseqs+1; j++){
 			distMat[i][j] = 0;
 		}
 	}
-	char** seqsInCluster = (char **)malloc(KSEQ*sizeof(char *));
-	for(i=0; i<KSEQ; i++){
+	char** seqsInCluster = (char **)malloc(MAXNUMBEROFKSEQS*sizeof(char *));
+	for(i=0; i<MAXNUMBEROFKSEQS; i++){
 		seqsInCluster[i] = (char *)malloc(fasta_specs[1]*sizeof(char));
-		strcpy(seqsInCluster[i],sequences[chooseK[i]]);
 		//printf("seqsInCluster[%d]: %s\n",i,seqsInCluster[i]);
 	}
-	createDistMat(seqsInCluster,distMat,KSEQ,fasta_specs[1]);
+	for(i=0; i<opt.number_of_kseqs; i++){
+		strcpy(seqsInCluster[i],sequences[chooseK[i]]);
+	}
+	createDistMat(seqsInCluster,distMat,opt.number_of_kseqs,fasta_specs[1]);
 	char*** clusters = (char***)malloc(MAXNUMBEROFCLUSTERS*sizeof(char **));
 	for(i=0; i<MAXNUMBEROFCLUSTERS; i++){
 		clusters[i]=(char **)malloc((MAXNUMBEROFKSEQS)*sizeof(char *));
@@ -773,37 +775,37 @@ int main(int argc, char **argv){
 			clusters[i][j][0]='\0';
 		}
 	}
-	for(i=0; i<KSEQ; i++){
+	for(i=0; i<opt.number_of_kseqs; i++){
 		strcpy(clusters[0][i],seqNames[chooseK[i]]);
 	}
 	int* clusterSize = (int *)malloc(fasta_specs[3]*sizeof(int));
-	clusterSize[0]=KSEQ;
-	print_distance_matrix(distMat,clusters,0,KSEQ);
+	clusterSize[0]=opt.number_of_kseqs;
+	print_distance_matrix(distMat,clusters,0,opt.number_of_kseqs);
 	node **tree = malloc((fasta_specs[3]+1)*sizeof(node *));
 	for(i=0; i<fasta_specs[3]+1; i++){
-		tree[i]=(node *)malloc((2*KSEQ-1)*sizeof(node));
-		for(j=0; j<2*KSEQ-1; j++){
+		tree[i]=(node *)malloc((2*opt.number_of_kseqs-1)*sizeof(node));
+		for(j=0; j<2*opt.number_of_kseqs-1; j++){
 			tree[i][j].name=(char *)malloc(MAXNAME*sizeof(char));
 			strcpy(tree[i][j].name,"internal");
 			tree[i][j].nodeToCut=0;
 		}
 	}
-	int root = NJ(tree,distMat,clusters,KSEQ,0);
+	int root = NJ(tree,distMat,clusters,opt.number_of_kseqs,0);
 	get_number_descendants(tree,root,0);
-	printtree(tree,0,KSEQ);
-	double* branchLengths = (double *)malloc((2*KSEQ-1)*sizeof(double));
-	for(i=0; i<2*KSEQ-1; i++){
+	printtree(tree,0,opt.number_of_kseqs);
+	double* branchLengths = (double *)malloc((2*opt.number_of_kseqs-1)*sizeof(double));
+	for(i=0; i<2*opt.number_of_kseqs-1; i++){
 		branchLengths[i] = tree[0][i].bl;
 	}
-	int* indexArray = (int *)malloc((2*KSEQ-1)*sizeof(int));
-	sortArray(branchLengths,indexArray);
+	int* indexArray = (int *)malloc((2*opt.number_of_kseqs-1)*sizeof(int));
+	sortArray(branchLengths,indexArray,opt);
 	printf("Longest Branch: %lf node: %d\n",branchLengths[0],indexArray[0]);
 	int numberOfNodesToCut=0;
-	for(i=0; i<2*KSEQ-1; i++){
-		if (tree[0][indexArray[i]].nd > 4 && numberOfNodesToCut < NCLUST-1){
+	for(i=0; i<2*opt.number_of_kseqs-1; i++){
+		if (tree[0][indexArray[i]].nd > 4 && numberOfNodesToCut < opt.number_of_clusters-1){
 			printf("cutting at node %d\n",indexArray[i]);
 			numberOfNodesToCut++;
-			printdescendants(tree,indexArray[i],clusters,numberOfNodesToCut,0);
+			printdescendants(tree,indexArray[i],clusters,numberOfNodesToCut,0,opt);
 			tree[0][indexArray[i]].nodeToCut=1;
 			clearDescendants(tree,tree[0][indexArray[i]].up[0],0);
 			clearDescendants(tree,tree[0][indexArray[i]].up[1],0);
@@ -814,9 +816,9 @@ int main(int argc, char **argv){
 	free(indexArray);
 	free(branchLengths);
 	printf("number of nodes to cut: %d\n",numberOfNodesToCut);
-	printdescendants(tree,root,clusters,numberOfNodesToCut+1,0);
+	printdescendants(tree,root,clusters,numberOfNodesToCut+1,0,opt);
 	for(i=0; i<numberOfNodesToCut+1; i++){
-		clusterSize[i]=countNumInCluster(clusters,i);
+		clusterSize[i]=countNumInCluster(clusters,i,opt);
 		printf("number in cluster%d: %d\n",i,clusterSize[i]);
 	}
 	//node** treeArr;
@@ -824,10 +826,10 @@ int main(int argc, char **argv){
 	int k,l,m;
 	int count=0;
 	double averageDist;
-	char*** seqsInClusterAvg = (char ***)malloc((NCLUST-1)*sizeof(char **));
-	for(i=0; i<NCLUST-1; i++){
-		seqsInClusterAvg[i] = (char **)malloc(KSEQ*sizeof(char *));
-		for(j=0; j<KSEQ; j++){
+	char*** seqsInClusterAvg = (char ***)malloc((opt.number_of_clusters-1)*sizeof(char **));
+	for(i=0; i<opt.number_of_clusters-1; i++){
+		seqsInClusterAvg[i] = (char **)malloc(opt.number_of_kseqs*sizeof(char *));
+		for(j=0; j<opt.number_of_kseqs; j++){
 			seqsInClusterAvg[i][j] = (char *)malloc(fasta_specs[1]*sizeof(char));
 		}
 	}
@@ -837,15 +839,15 @@ int main(int argc, char **argv){
 	double*** distMatAvg = (double ***)malloc(numberOfNodesToCut*sizeof(double **));
 	for(i=1; i<numberOfNodesToCut+1; i++){
 		for(j=0; j<clusterSize[i]; j++){
-			for(k=0; k<KSEQ; k++){
+			for(k=0; k<opt.number_of_kseqs; k++){
 				if (strcmp(clusters[i][j],clusters[0][k])==0){
 					strcpy(seqsInCluster[j],sequences[chooseK[k]]);
 					strcpy(seqsInClusterAvg[i-1][j],sequences[chooseK[k]]);
 				}
 			}
 		}
-		for(l=0; l<KSEQ+1; l++){
-			for(m=0; m<KSEQ+1; m++){
+		for(l=0; l<opt.number_of_kseqs+1; l++){
+			for(m=0; m<opt.number_of_kseqs+1; m++){
 				distMat[l][m]=0;
 			}
 		}
@@ -863,10 +865,10 @@ int main(int argc, char **argv){
 		get_number_descendants(tree,root,i);
 		printf("cluster %d tree\n",i);
 		printtree(tree,i,clusterSize[i]);
-		print_taxonomy(clusters,seqNames,taxonomy,i,clusterSize[i],chooseK);
+		print_taxonomy(clusters,seqNames,taxonomy,i,clusterSize[i],chooseK,opt);
 	}
-	freeSeqsInClusterAvg(seqsInClusterAvg);
-	freeDistMat(distMat,KSEQ+1);
+	freeSeqsInClusterAvg(seqsInClusterAvg,opt);
+	freeDistMat(distMat,opt.number_of_kseqs+1);
 	freeDistMatAvg(distMatAvg,clusterSize,count);
 	freeTreeArr(tree,clusterSize);
 	double average = calculateAvg[0]/calculateAvg[1];
@@ -876,11 +878,15 @@ int main(int argc, char **argv){
 	double distance=0;
 	int closestCluster=0;
 	int next=0;
-	int update_initial_cluster = KSEQ;
+	int update_initial_cluster = opt.number_of_kseqs;
+	int* newClusterSizes = (int *)malloc(MAXNUMBEROFCLUSTERS*sizeof(int));
+	for(i=0; i<numberOfNodesToCut+1; i++){
+		newClusterSizes[i] = clusterSize[i];
+	}
 	for(i=0; i<fasta_specs[0]; i++){
 		shortest_distance=1;
-		for(j=0; j<KSEQ; j++){
-			if (i==chooseK[i]){
+		for(j=0; j<opt.number_of_kseqs; j++){
+			if (i==chooseK[j]){
 				next=1;
 			}
 		}
@@ -899,25 +905,28 @@ int main(int argc, char **argv){
 					closestCluster=j;
 				}
 			}
+			printf("%s: cluster: %d distance: %lf tax: %s\n",seqNames[i],closestCluster,shortest_distance,taxonomy[i]);
+			if (shortest_distance > average){
+				printf("making new cluster for %s number of clusters now %d\n",seqNames[i],numberOfNodesToCut+1);
+				makeNewCluster(clusters,numberOfNodesToCut+1,seqNames[i],chooseK,i,update_initial_cluster);
+				newClusterSizes[numberOfNodesToCut+1]=1;
+				clusterSize[numberOfNodesToCut+1]=1;
+				update_initial_cluster++;
+				numberOfNodesToCut++;
+			}else{
+				addToCluster(clusters,seqNames[i],closestCluster,newClusterSizes[closestCluster]);
+				newClusterSizes[closestCluster]++;
+			}
 		}
 		next=0;
-		printf("%s: cluster: %d distance: %lf tax: %s\n",seqNames[i],closestCluster,shortest_distance,taxonomy[i]);
-		if (shortest_distance > average){
-			printf("making new cluster for %s number of clusters now %d\n",seqNames[i],numberOfNodesToCut+1);
-			makeNewCluster(clusters,numberOfNodesToCut+1,seqNames[i],chooseK,i,update_initial_cluster);
-			clusterSize[numberOfNodesToCut+1]=1;
-			update_initial_cluster++;
-			numberOfNodesToCut++;
-		}else{
-			addToCluster(clusters,seqNames[i],closestCluster,clusterSize[closestCluster]);
-			//clusterSize[closestCluster]++;
-		}
 	}
 	free(chooseK);
-	freeSeqsInCluster(seqsInCluster);
-	printClusters(clusters,numberOfNodesToCut+1,clusterSize,seqNames,sequences,fasta_specs[0],taxonomy);
+	freeSeqsInCluster(seqsInCluster,opt);
+	printClusters(clusters,numberOfNodesToCut+1,newClusterSizes,seqNames,sequences,fasta_specs[0],taxonomy,opt);
+	printf("finished!\n");
 	free(clusterSize);
-	freeClusters(clusters);
+	free(newClusterSizes);
+	freeClusters(clusters,opt);
 	freeSequences(seqNames,fasta_specs[0]);
 	freeSequences(sequences,fasta_specs[0]);
 	freeSequences(taxonomy,fasta_specs[0]);
