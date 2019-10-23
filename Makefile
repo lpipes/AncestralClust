@@ -10,11 +10,11 @@ DBGCFLAGS = -g -pg -w
 LIBS = -lm -lpthread -lz
 OPTIMIZATION = -O3 -march=native
 #sources
-SOURCES = cluster.c options.c
+SOURCES = NJcluster.c options.c
 NEEDLEMANWUNSCH = needleman_wunsch.c alignment.c alignment_scoring.c
 OBJECTS = (SOURCES: .c = .o)
 # the build target executable:
-TARGET = cluster
+TARGET = NJcluster
 
 all: $(TARGET)
 $(TARGET): $(TARGET).c

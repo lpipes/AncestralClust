@@ -1,18 +1,19 @@
 #include "options.h"
 
-static struct Options long_options[]=
+static struct option long_options[]=
 {
 	{"help", no_argument, 0, 'h'},
 	{"infile", required_argument, 0, 'i'},
 	{"infile_taxonomy", required_argument, 0, 't'},
-	{"number_of_clusters", required_argument, 0, 'n'},
-	{"number_of_sequences", required_argument, 0, 'k'},
-	{"directory", required_argument, 0, 'd'}
+	{"number_of_clusters", optional_argument, 0, 'n'},
+	{"number_of_sequences", optional_argument, 0, 'k'},
+	{"directory", optional_argument, 0, 'd'},
+	{0,0,0,0}
 };
 
 char usage[] = "\nNJclust [OPTIONS]\n\
 	\n\
-	-h, --help			usage: -i file.fasta -t file_taxonomy.txt\n\
+	-h, --help			usage: -i file.fasta -t file_taxonomy.txt -d output_directory\n\
 	-i, --infile			fasta to cluster\n\
 	-t, --infile_taxonomy		taxonomy of fasta to cluster (sorted)\n\
 	-n, --number_of_clusters	number of initial clusters\n\
@@ -62,6 +63,10 @@ void parse_options(int argc, char **argv, Options *opt){
 				break;
 			case 'd':
 				success = sscanf(optarg, "%s", opt->output_directory);
+				if (optarg[strlen(optarg)-1]=='/'){
+					opt->slash=1;
+				}
+				opt->default_directory=0;
 				if (!success)
 					fprintf(stderr, "Invalid output directory\n");
 				break;

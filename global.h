@@ -10,7 +10,7 @@
 #define MINBL 0.00001
 #define MAXNAME 30
 #define MAXNUMBEROFCLUSTERS 100
-#define MAXNUMBEROFKSEQS 1000
+#define MAXNUMBEROFKSEQS 10000
 
 typedef struct node{
 	int down;
@@ -27,6 +27,8 @@ typedef struct Options{
 	char taxonomy[1000];
 	int number_of_clusters;
 	int number_of_kseqs;
+	int slash;
+	int default_directory;
 }Options;
 
 #endif
