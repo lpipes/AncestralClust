@@ -1,3 +1,7 @@
 # NJcluster
 usage:
-cluster -i infile.fasta -t infile_taxonomy.txt -n number_of_initial_clusters -k number_of_initial_sequences
+NJcluster -i [infile.fasta] -t [infile_taxonomy.txt] -n [number of initial clusters] -k [number of initial sequences]
+
+NJcluster is a clustering program created for in silico sequences for amplicons. It chooses at random k number of initial sequences and forms n number of initial clusters. 
+
+NJcluster includes code from Needleman-Wunsch Alignment
