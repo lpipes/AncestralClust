@@ -160,6 +160,14 @@ void Get_dist_JC(int alignment_length, double **M, int** DATA, int* mult, int in
 		}
 	}
 }
+void elimfrom(int site, int alignment_length, int number_of_sequences, int **seq){
+	int i,j;
+	for(i=0; i<number_of_sequences; i++){
+		for(j=site;j<alignment_length-1;j++){
+			seq[i][j] = seq[i][j+1];
+		}
+	}
+}
 int sortseq(int alignment_length, int number_of_sequences, int** seq, int* mult){
 	int i,j;
 	for(i=0; i<alignment_length; i++){
@@ -186,11 +194,31 @@ int seqid(int i, int j, int number_of_sequences, int** seq){
 	}
 	return 1;
 }
-void elimfrom(int site, int alignment_length, int number_of_sequences, int **seq){
+void updateChooseK(int* chooseK, int index, int clusterSize){
+	int i;
+	int tmp[clusterSize];
+	for(i=0; i<clusterSize; i++){
+		tmp[i] = chooseK[i];
+	}
+	for(i=0; i<clusterSize-1; i++){
+		if ( i>=index ){
+			chooseK[i]=tmp[i+1];
+		}
+	}
+}
+//this algorithm takes an nxn upper triangular matrix and converts it to an (n-1)x(n-1)
+//upper triangular matrix by deleting row k and column k
+void updatematrix(double **matrix, int k, int n){
 	int i,j;
-	for(i=0; i<number_of_sequences; i++){
-		for(j=site;j<alignment_length-1;j++){
-			seq[i][j] = seq[i][j+1];
+	for (i=0; i<n; i++){
+		for (j=i+1; j<n; j++){
+			if (i>=k && j>=k){
+				matrix[i][j]=matrix[i+1][j+1];
+			}else if (i>=k) {
+				matrix[i][j]=matrix[i+1][j];
+			}else if (j>=k) {
+				matrix[i][j]=matrix[i][j+1];
+			}
 		}
 	}
 }
@@ -302,34 +330,6 @@ int NJ(node** tree, double** distMat,char*** clusters, int clusterSize,int which
 	free(r);
 	free(index);
 	return(newnode);
-}
-void updateChooseK(int* chooseK, int index, int clusterSize){
-	int i;
-	int tmp[clusterSize];
-	for(i=0; i<clusterSize; i++){
-		tmp[i] = chooseK[i];
-	}
-	for(i=0; i<clusterSize-1; i++){
-		if ( i>=index ){
-			chooseK[i]=tmp[i+1];
-		}
-	}
-}
-//this algorithm takes an nxn upper triangular matrix and converts it to an (n-1)x(n-1)
-//upper triangular matrix by deleting row k and column k
-void updatematrix(double **matrix, int k, int n){
-	int i,j;
-	for (i=0; i<n; i++){
-		for (j=i+1; j<n; j++){
-			if (i>=k && j>=k){
-				matrix[i][j]=matrix[i+1][j+1];
-			}else if (i>=k) {
-				matrix[i][j]=matrix[i+1][j];
-			}else if (j>=k) {
-				matrix[i][j]=matrix[i][j+1];
-			}
-		}
-	}
 }
 void printtree(node** tree, int whichTree, int clusterSize){
 	int i;
