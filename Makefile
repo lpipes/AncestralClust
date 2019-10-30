@@ -4,7 +4,7 @@ CC = gcc
 #compiler flags:
 # -g adds debugging information to the executable file
 # -Wall turns on most, but not all, compiler warnings
-CFLAGS = -w -pg
+CFLAGS = -w
 DBGCFLAGS = -g -pg -w
 # -lm links the math library
 LIBS = -lm -lpthread -lz
