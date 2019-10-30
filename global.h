@@ -1,6 +1,7 @@
 /*
  * global.h
  */
+#include "needleman_wunsch.h"
 #ifndef _GLOBAL_
 #define _GLOBAL_
 
@@ -8,7 +9,6 @@
 #define MAXNAME 30
 #define DISTMAX 30.0
 #define MINBL 0.00001
-#define MAXNAME 30
 #define MAXNUMBEROFCLUSTERS 100
 #define MAXNUMBEROFKSEQS 10000
 
@@ -30,5 +30,11 @@ typedef struct Options{
 	int slash;
 	int default_directory;
 }Options;
+
+typedef struct nw_alignment{
+	nw_aligner_t *nw;
+	alignment_t *aln;
+	scoring_t *scoring;
+}nw_alignment;
 
 #endif

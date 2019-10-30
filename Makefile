@@ -12,15 +12,16 @@ OPTIMIZATION = -O3 -march=native
 #sources
 SOURCES = NJcluster.c options.c
 NEEDLEMANWUNSCH = needleman_wunsch.c alignment.c alignment_scoring.c
+HASHMAP = hashmap.c
 OBJECTS = (SOURCES: .c = .o)
 # the build target executable:
 TARGET = NJcluster
 
 all: $(TARGET)
 $(TARGET): $(TARGET).c
-	$(CC) $(CFLAGS) -o $(TARGET) $(NEEDLEMANWUNSCH) $(SOURCES) $(LIBS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(NEEDLEMANWUNSCH) $(HASHMAP) $(SOURCES) $(LIBS)
 debug: $(TARGET).c
-	$(CC) $(DBGCFLAGS) -o $(TARGET) $(NEEDLEMANWUNSCH) $(SOURCES) $(LIBS)
+	$(CC) $(DBGCFLAGS) -o $(TARGET) $(NEEDLEMANWUNSCH) $(HASHMAP) $(SOURCES) $(LIBS)
 
 clean:
 	$(RM) $(TARGET)
