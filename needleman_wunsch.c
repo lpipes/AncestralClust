@@ -9,7 +9,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 #include "needleman_wunsch.h"
+
+pthread_mutex_t lock;
 
 nw_aligner_t* needleman_wunsch_new()
 {
@@ -35,8 +38,9 @@ void needleman_wunsch_align2(const char *a, const char *b,
                              const scoring_t *scoring,
                              nw_aligner_t *nw, alignment_t *result)
 {
+	//pthread_mutex_lock(&lock);
   aligner_align(nw, a, b, len_a, len_b, scoring, 0);
-
+	//pthread_mutex_unlock(&lock);
   // work backwards re-tracing optimal alignment, then shift sequences into place
 
   // note: longest_alignment = strlen(seq_a) + strlen(seq_b)

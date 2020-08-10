@@ -4,7 +4,7 @@ CC = gcc
 #compiler flags:
 # -g adds debugging information to the executable file
 # -Wall turns on most, but not all, compiler warnings
-CFLAGS = -w
+CFLAGS = -w -pg
 DBGCFLAGS = -g -pg -w
 # -lm links the math library
 LIBS = -lm -lpthread -lz
@@ -19,7 +19,7 @@ TARGET = NJcluster
 
 all: $(TARGET)
 $(TARGET): $(TARGET).c
-	$(CC) $(CFLAGS) -o $(TARGET) $(NEEDLEMANWUNSCH) $(HASHMAP) $(SOURCES) $(LIBS)
+	$(CC) $(CFLAGS) $(OPTIMIZATION) -o $(TARGET) $(NEEDLEMANWUNSCH) $(HASHMAP) $(SOURCES) $(LIBS)
 debug: $(TARGET).c
 	$(CC) $(DBGCFLAGS) -o $(TARGET) $(NEEDLEMANWUNSCH) $(HASHMAP) $(SOURCES) $(LIBS)
 
