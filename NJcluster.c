@@ -10,7 +10,7 @@
 #include "global.h"
 #include "hashmap.h"
 
-struct hashmap map;
+//struct hashmap map;
 char*** clusters;
 //char** seqNames;
 //char** sequences;
@@ -75,16 +75,17 @@ void readInFasta(FILE* fasta, char** seqNames, char** sequences){
 			}
 			seqNames[i][j-1]='\0';
 		}else{
+			//for(j=0; j<100; j++){
 			for(j=0;buffer[j]!='\n';j++){
 				sequences[i][j]=buffer[j];
 			}
 			sequences[i][j]='\0';
-			hashmap_put(&map,seqNames[i],sequences[i]);
+			//hashmap_put(&map,seqNames[i],sequences[i]);
 			i++;
 		}
 	}
 }
-int readInFastaToAssign(FILE* fasta, char** seqNames, char** sequences, struct hashmap mapToAssign){
+/*int readInFastaToAssign(FILE* fasta, char** seqNames, char** sequences, struct hashmap mapToAssign){
 	char buffer[FASTA_MAXLINE];
 	int i=0;
 	int j=0;
@@ -106,7 +107,7 @@ int readInFastaToAssign(FILE* fasta, char** seqNames, char** sequences, struct h
 		}
 	}
 	return i;
-}
+}*/
 void readInClusterSeqs(char** filesForReading, int number_of_clusters){
 	char buffer[FASTA_MAXLINE];
 	int i=0;
@@ -127,7 +128,7 @@ void readInClusterSeqs(char** filesForReading, int number_of_clusters){
 					sequences[j]=buffer[j];
 				}
 				sequences[j-1]='\0';
-				hashmap_put(&map,clusters[i][k],sequences);
+				//hashmap_put(&map,clusters[i][k],sequences);
 				k++;
 			}
 		}
@@ -339,6 +340,7 @@ int NJ(node** tree, double** distMat,int clusterSize,int whichTree){
 			strcpy(tree[whichTree][child2].name,clusters[whichTree][index[pair[1]]]);
 		}
 		// HERE WE DISALLOW NEGATIVE BRANCHLENGTHS!  IS THIS THE BEST THING TO DO?
+		tree[whichTree][child2].distance = distMat[pair[0]][pair[1]];
 		if ((u1 = (distMat[pair[0]][pair[1]] +r[pair[0]]-r[pair[1]])/2.0) < MINBL){
 			tree[whichTree][child1].bl = MINBL;
 		}else{
@@ -346,6 +348,7 @@ int NJ(node** tree, double** distMat,int clusterSize,int whichTree){
 		}
 		if ((tree[whichTree][child2].bl = distMat[pair[0]][pair[1]]-u1) < MINBL)/*(DM[pair[0]][pair[1]] +r[pair[1]]-r[pair[0]])/2.0;*/{
 			tree[whichTree][child2].bl = MINBL;
+			tree[whichTree][child2].distance = distMat[pair[0]][pair[1]];
 		}
 		for (i=0; i<n; i++){
 			if (i != pair[0] && i != pair[1]){
@@ -625,6 +628,7 @@ double findShortestDist(char** clusterSeqs, char* seq, int clusterSize, int long
 	for(i=0; i<clusterSize; i++){
 		//pthread_mutex_lock(&lock);
 		needleman_wunsch_align(clusterSeqs[i],seq,nw_struct->scoring,nw_struct->nw,nw_struct->aln);
+		//pthread_mutex_unlock(&lock);
 		int alignment_length = strlen(nw_struct->aln->result_a);
 		//int** DATA = (int **)malloc(2*sizeof(int *));
 		//int k;
@@ -633,6 +637,7 @@ double findShortestDist(char** clusterSeqs, char* seq, int clusterSize, int long
 		//}
 		//int* mult = (int *)malloc(alignment_length*sizeof(int));
 		alignment_length = populate_DATA(nw_struct->aln->result_a,nw_struct->aln->result_b,DATA,alignment_length,mult);
+		//pthread_mutex_lock(&lock);
 		Get_dist_JC(alignment_length,distMat,DATA,mult,i,0);
 		//pthread_mutex_unlock(&lock);
 	}
@@ -687,21 +692,21 @@ void printClusters(int start, int number_of_clusters, int number_of_total_seqs, 
 	}
 	for(i=1; i<number_of_clusters; i++){
 		if (opt.slash==0 && opt.default_directory==0){
-			snprintf(fileName,FASTA_MAXLINE,"%s/%d.fasta",directory,i+start-1);
+			snprintf(fileName,FASTA_MAXLINE,"%s/%d.fasta",directory,i+start-2);
 		}else if (opt.slash==1){
-			snprintf(fileName,FASTA_MAXLINE,"%s%d.fasta",directory,i+start-1);
+			snprintf(fileName,FASTA_MAXLINE,"%s%d.fasta",directory,i+start-2);
 		}else if (opt.default_directory==1){
-			snprintf(fileName,FASTA_MAXLINE,"%d.fasta",i+start-1);
+			snprintf(fileName,FASTA_MAXLINE,"%d.fasta",i+start-2);
 		}
 		clusterFile = fopen(fileName, "a");
 		if (clusterFile == NULL){ printf("Error opening cluster file!"); exit(1); }
 		if (hasTaxFile==1){
 		if (opt.slash==0 && opt.default_directory==0){
-			snprintf(fileName,FASTA_MAXLINE, "%s/%d_taxonomy.txt",directory,i+start-1);
+			snprintf(fileName,FASTA_MAXLINE, "%s/%d_taxonomy.txt",directory,i+start-2);
 		}else if (opt.slash==1){
-			snprintf(fileName,FASTA_MAXLINE, "%s%d_taxonomy.txt",directory,i+start-1);
+			snprintf(fileName,FASTA_MAXLINE, "%s%d_taxonomy.txt",directory,i+start-2);
 		}else if (opt.default_directory==1){
-			snprintf(fileName,FASTA_MAXLINE, "%d_taxonomy.txt",i+start-1);
+			snprintf(fileName,FASTA_MAXLINE, "%d_taxonomy.txt",i+start-2);
 		}
 		clusterTaxFile = fopen(fileName, "a");
 		if (clusterTaxFile == NULL){ printf("Error opening cluster taxonomy file!"); exit(1); }
@@ -801,21 +806,21 @@ void printLessThanFour(int numberOfUnassigned, Options opt, struct hashmap taxMa
 	char *directory = strdup(opt.output_directory);
 	for(i=0; i<numberOfUnassigned; i++){
 		if(opt.slash==0 && opt.default_directory==0){
-			snprintf(fileName,FASTA_MAXLINE,"%s/%d.fasta",directory,i+starting_number_of_clusters);
+			snprintf(fileName,FASTA_MAXLINE,"%s/%d.fasta",directory,i+starting_number_of_clusters-1);
 		}else if (opt.slash==1){
-			snprintf(fileName,FASTA_MAXLINE,"%s%d.fasta",directory,i+starting_number_of_clusters);
+			snprintf(fileName,FASTA_MAXLINE,"%s%d.fasta",directory,i+starting_number_of_clusters-1);
 		}else if (opt.default_directory==1){
-			snprintf(fileName,FASTA_MAXLINE,"%d.fasta",i+starting_number_of_clusters);
+			snprintf(fileName,FASTA_MAXLINE,"%d.fasta",i+starting_number_of_clusters-1);
 		}
 		clusterFile = fopen(fileName,"w");
 		if (clusterFile == NULL){ printf("Error opening fasta file!"); exit(1); }
 		if ( opt.hasTaxFile == 1 ){
 			if(opt.slash==0 && opt.default_directory==0){
-				snprintf(fileName,FASTA_MAXLINE, "%s/%d_taxonomy.txt",directory,i+starting_number_of_clusters);
+				snprintf(fileName,FASTA_MAXLINE, "%s/%d_taxonomy.txt",directory,i+starting_number_of_clusters-1);
 			}else if (opt.slash==1){
-				snprintf(fileName,FASTA_MAXLINE,"%s%d_taxonomy.txt",directory,i+starting_number_of_clusters);
+				snprintf(fileName,FASTA_MAXLINE,"%s%d_taxonomy.txt",directory,i+starting_number_of_clusters-1);
 			}else if (opt.default_directory==1){
-				snprintf(fileName,FASTA_MAXLINE,"%d_taxonomy.txt",i+starting_number_of_clusters);
+				snprintf(fileName,FASTA_MAXLINE,"%d_taxonomy.txt",i+starting_number_of_clusters-1);
 			}
 			clusterTaxFile = fopen(fileName, "w");
 			if (clusterTaxFile==NULL){ printf("Error opening taxonomy file!"); exit(1); }
@@ -922,20 +927,20 @@ void freeClusters(int kseqs){
 	}
 	free(clusters);
 }
-void freeSequences(int number_of_seqs,char** sequences,char** seqNames, char** taxonomy, char** sequencesToClusterLater,char** assigned){
+void freeSequences(int number_of_seqs,char** sequences,char** seqNames, char** taxonomy, char** sequencesToClusterLater){
 	int i;
 	for(i=0;i<number_of_seqs; i++){
 		free(sequences[i]);
 		free(seqNames[i]);
 		free(taxonomy[i]);
 		free(sequencesToClusterLater[i]);
-		free(assigned[i]);
+		//free(assigned[i]);
 	}
 	free(sequences);
 	free(seqNames);
 	free(taxonomy);
 	free(sequencesToClusterLater);
-	free(assigned);
+	//free(assigned);
 }
 void freeSeqsInCluster(char** seqsInCluster, int number_of_kseqs){
 	int i;
@@ -1054,7 +1059,7 @@ void *runAssignToCluster(void *ptr){
 	char** taxonomy = mstr->taxonomy;
 	//struct hashmap seqsToCompare = mstr->seqsToCompare;
 	//struct hashmap assignedSeqs = mstr->assignedSeqs;
-	char** assignedSeqs = mstr->assignedSeqs;
+	//char** assignedSeqs = mstr->assignedSeqs;
 	int* chooseK = mstr->chooseK;
 	int i,j,k,l,m;
 	int closestCluster;
@@ -1073,10 +1078,10 @@ void *runAssignToCluster(void *ptr){
 	//for(i=0; i<number_of_kseqs; i++){
 	//	seqsInCluster[i] = (char *)malloc((fasta_specs[1]+1)*sizeof(char));
 	//}
-	char*** clusterNames = mstr->clusterNames;
+	//char*** clusterNames = mstr->clusterNames;
+	nw_alignment* nw_struct = mstr->nw_struct;
+	//nw_struct = initialize_nw(fasta_specs[3]);
 	char*** clusterSeqs = mstr->clusterSeqs;
-	nw_alignment* nw_struct;
-	nw_struct = initialize_nw(fasta_specs[3]);
 	double** distMat2;
 	distMat2 = (double**)malloc((clusterSize[largest_cluster]+1)*sizeof(double *));
 	for(i=0; i<clusterSize[largest_cluster]+1; i++){
@@ -1095,7 +1100,7 @@ void *runAssignToCluster(void *ptr){
 	for(i=0; i<sizeOfChunk; i++){
 		shortest_distance=1;
 		for(j=0; j<number_of_kseqs; j++){
-			if (i==mstr->chooseK[j]){
+			if (i+start==mstr->chooseK[j]){
 				next=1;
 			}
 		}
@@ -1110,11 +1115,11 @@ void *runAssignToCluster(void *ptr){
 		//if ( 1==(int)hashmap_get(&assignedSeqs,seqNames[i]) ){
 		//	next = 1;
 		//}
-		for(j=0; j<end-start; j++){
-			if (strcmp(assignedSeqs[j],seqNames[i])==0){
-				next=1;
-			}
-		}
+		//for(j=0; j<end-start; j++){
+		//	if (strcmp(assignedSeqs[j],seqNames[i])==0){
+		//		next=1;
+		//	}
+		//}
 		if (next != 1){
 			for(j=1; j<number_of_clusters; j++){
 				//for(k=0; k<clusterSize[j]; k++){
@@ -1138,7 +1143,7 @@ void *runAssignToCluster(void *ptr){
 			//printf("thread %d\t%s\t%d\t%lf\t%s\n",mstr->threadnumber,seqNames[i],closestCluster,shortest_distance,taxonomy[i]);
 			if (shortest_distance > average){
 				//printf("making new cluster for %s number of clusters now %d\n",seqNames[i],number_of_clusters);
-				if (num_threads==1){
+				//if (num_threads==1){
 				/*
 				makeNewCluster(clusterSeqs,number_of_clusters,sequences[i],number_of_kseqs);
 				addToCluster(seqNames[i],number_of_clusters,results,sizeOfChunk);
@@ -1151,15 +1156,15 @@ void *runAssignToCluster(void *ptr){
 				//numberOfNodesToCut++;
 				results->number_of_clusters++;
 				numAssigned++;*/
-				}
+				//}
 				saveForLater(seqNames[i],results,sizeOfChunk);
 			}else{
-				for(j=sizeOfChunk-1; j>=0; j--){
-					if(results->assigned[j][0]=='\0'){
-						break;
-					}
-				}
-				strcpy(results->assigned[j],seqNames[i]);
+				//for(j=sizeOfChunk-1; j>=0; j--){
+				//	if(results->assigned[j][0]=='\0'){
+				//		break;
+				//	}
+				//}
+				//strcpy(results->assigned[j],seqNames[i]);
 				addToCluster(seqNames[i],closestCluster,results,sizeOfChunk);
 				numAssigned++;
 				results->numassigned++;
@@ -1172,11 +1177,11 @@ void *runAssignToCluster(void *ptr){
 	free(DATA[1]);
 	free(DATA);
 	free(mult);
+	//free_nw(nw_struct);
 	for(i=0; i<clusterSize[largest_cluster];i++){
 		free(distMat2[i]);
 	}
 	free(distMat2);
-	free_nw(nw_struct);
 	//freeSeqsInCluster(seqsInCluster,number_of_kseqs);
 	mstr->numAssigned = numAssigned;
 	pthread_exit(NULL);
@@ -1225,7 +1230,7 @@ void makeNewClusters(int numberOfUnAssigned, char** sequencesToClusterLater){
 		i++;
 	}
 }
-int readInFastaClusters(Options opt, char** readInFiles, struct hashmap hash_for_files){
+/*int readInFastaClusters(Options opt, char** readInFiles, struct hashmap hash_for_files){
 	struct dirent *de, *de2;
 	DIR *dr = opendir(opt.output_directory);
 	regex_t regex1;
@@ -1260,7 +1265,7 @@ int readInFastaClusters(Options opt, char** readInFiles, struct hashmap hash_for
 	}
 	closedir(dr);
 	return i;
-}
+}*/
 void printInitialClusters(int starting_number_of_clusters,int number_of_clusters, int* clusterSizes, Options opt, int total_number_of_sequences, struct hashmap taxMap, int hasTaxFile, char** seqNames, char** sequences){
 	FILE *fasta;
 	FILE *tax;
@@ -1269,21 +1274,21 @@ void printInitialClusters(int starting_number_of_clusters,int number_of_clusters
 	int i,j,k;
 	for(i=1; i<number_of_clusters; i++){
 		if (opt.slash==0 && opt.default_directory==0){
-			snprintf(fileName,FASTA_MAXLINE,"%s/%d.fasta",directory,i+starting_number_of_clusters-1);
+			snprintf(fileName,FASTA_MAXLINE,"%s/%d.fasta",directory,i+starting_number_of_clusters-2);
 		}else if (opt.slash==1){
-			snprintf(fileName,FASTA_MAXLINE,"%s%d.fasta",directory,i+starting_number_of_clusters-1);
+			snprintf(fileName,FASTA_MAXLINE,"%s%d.fasta",directory,i+starting_number_of_clusters-2);
 		}else if (opt.default_directory==1){
-			snprintf(fileName,FASTA_MAXLINE,"%d.fasta",i+starting_number_of_clusters-1);
+			snprintf(fileName,FASTA_MAXLINE,"%d.fasta",i+starting_number_of_clusters-2);
 		}
 		fasta = fopen(fileName, "w");
 		if (fasta == NULL){ printf("Error opening fasta file!"); exit(1); }
 		if (hasTaxFile==1){
 		if (opt.slash==0 && opt.default_directory==0){
-			snprintf(fileName,FASTA_MAXLINE, "%s/%d_taxonomy.txt",directory,i+starting_number_of_clusters-1);
+			snprintf(fileName,FASTA_MAXLINE, "%s/%d_taxonomy.txt",directory,i+starting_number_of_clusters-2);
 		}else if (opt.slash==1){
-			snprintf(fileName,FASTA_MAXLINE, "%s%d_taxonomy.txt",directory,i+starting_number_of_clusters-1);
+			snprintf(fileName,FASTA_MAXLINE, "%s%d_taxonomy.txt",directory,i+starting_number_of_clusters-2);
 		}else if (opt.default_directory==1){
-			snprintf(fileName,FASTA_MAXLINE, "%d_taxonomy.txt",i+starting_number_of_clusters-1);
+			snprintf(fileName,FASTA_MAXLINE, "%d_taxonomy.txt",i+starting_number_of_clusters-2);
 		}
 		tax = fopen(fileName, "w");
 		if (tax==NULL){ printf("Error opening taxonomy file!"); exit(1); }
@@ -1347,17 +1352,22 @@ void printCLSTR(Options opt, char*** clstr, int ** clstr_lengths, int total_numb
 	char fileName[FASTA_MAXLINE];
 	char *directory = strdup(opt.output_directory);
 	int i,j,k;
+	if ( opt.output_file[0] == '\0' ){
+		strcpy(opt.output_file,"output.clstr");
+	}
 	if (opt.slash==0 && opt.default_directory==0){
-		snprintf(fileName,FASTA_MAXLINE,"%s/output.clstr",directory);
+		snprintf(fileName,FASTA_MAXLINE,"%s/%s",directory,opt.output_file);
 	}else if (opt.slash==1){
-		snprintf(fileName,FASTA_MAXLINE,"%soutput.clstr",directory);
+		snprintf(fileName,FASTA_MAXLINE,"%s%s",directory,opt.output_file);
 	}else if (opt.default_directory==1){
-		snprintf(fileName,FASTA_MAXLINE,"output.clstr");
+		snprintf(fileName,FASTA_MAXLINE,"%s",opt.output_file);
 	}
 	clstrFile = fopen(fileName, "w");
 	if (clstr == NULL ){ printf("Error opening cluster file!"); exit(1); }
-	for(i=0; i<number_of_clusters-1; i++){
-		fprintf(clstrFile,">Cluster %d\n",i);
+	for(i=0; i<number_of_clusters; i++){
+		if (clstr[i][0][0] != '\0'){
+			fprintf(clstrFile,">Cluster %d\n",i);
+		}
 		for(j=0; j<total_number_of_seqs; j++){
 			if ( clstr[i][j][0] != '\0'){
 				fprintf(clstrFile,"%d\t%dnt, >%s...\n",j,clstr_lengths[i][j],clstr[i][j]);
@@ -1415,6 +1425,49 @@ void findFirstNodeCut(node** tree, int node, int whichTree, int* answer){
 		findFirstNodeCut(tree,child1,whichTree,answer);
 		findFirstNodeCut(tree,child2,whichTree,answer);
 	}
+}
+int findMaxClade(node** tree, int number_of_leaves){
+	int i,j;
+	int numberOfNodesToCut = 0;
+	for(i=0; i<number_of_leaves; i++){
+		for(j=i+1; j<number_of_leaves; j++){
+			int lca = findLCA(tree,i,j);
+			printf("LCA is %d\n",lca);
+			double* distance = (double *)malloc(1*sizeof(double));
+			distance[0]=0;
+			calculateDistance(tree,i,lca,distance);
+			calculateDistance(tree,j,lca,distance);
+			printf("distance between %d and %d is %lf\n",i,j,distance[0]);
+			if (distance[0] > 0.4){
+				tree[0][tree[0][lca].up[0]].nodeToCut = 1;
+				tree[0][tree[0][lca].up[0]].nodeToCut = 1;
+				//tree[0][tree[0][lca].down].nodeToCut=1;
+				//tree[0][lca].nodeToCut = 1;
+				numberOfNodesToCut++;
+			}
+		}
+	}
+	return numberOfNodesToCut;
+}
+void calculateDistance(node** tree, int leaf, int LCA,double* distance){
+	if (leaf==LCA){ return;
+	}else{
+		if ( tree[0][leaf].bl > 0 ){
+			distance[0] = tree[0][leaf].bl + distance[0];
+		}
+		calculateDistance(tree,tree[0][leaf].down,LCA,distance);
+	}
+}
+int findLCA(node** tree, int nodeA, int nodeB){
+	if (nodeA == nodeB){ return nodeA; }
+	if (tree[0][nodeA].depth > tree[0][nodeB].depth){
+		int tmp = nodeA;
+		nodeA = nodeB;
+		nodeB = tmp;
+	}
+	if ( tree[0][nodeB].down == -1 ){ return nodeB; }
+	nodeB = tree[0][nodeB].down;
+	return findLCA(tree,nodeA,nodeB);
 }
 void findLeaves(node** tree, int node, int whichTree, int* parentCuts, int** clusterarr, char*** cluster_seqs, int number_of_sequences,char** seqNames, char** sequences){
 	int child1 = tree[whichTree][node].up[0];
@@ -1573,8 +1626,10 @@ int main(int argc, char **argv){
 	opt.default_directory=1;
 	opt.numthreads=1;
 	opt.hasTaxFile=0;
+	opt.output_fasta=0;
 	opt.clstr_format=1;
 	strcpy(opt.output_directory,"");
+	memset(opt.output_file,'\0',2000);
 	parse_options(argc, argv, &opt);
 	FILE* fasta_for_clustering;
 	if (( fasta_for_clustering = fopen(opt.fasta,"r")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
@@ -1600,7 +1655,7 @@ int main(int argc, char **argv){
 		seqNames[i]=(char *)malloc((fasta_specs[2]+1)*sizeof(char));
 		sequences[i]=(char *)malloc((fasta_specs[1]+1)*sizeof(char));
 	}
-	hashmap_init(&map, hashmap_hash_string, hashmap_compare_string, fasta_specs[0]);
+	//hashmap_init(&map, hashmap_hash_string, hashmap_compare_string, fasta_specs[0]);
 	if (( fasta_for_clustering = fopen(opt.fasta,"r")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
 	readInFasta(fasta_for_clustering,seqNames,sequences);
 	fclose(fasta_for_clustering);
@@ -1651,8 +1706,8 @@ int main(int argc, char **argv){
 	//numberOfUnAssigned=0;
 	while(numberOfUnAssigned>3){
 	printf("starting number of clusters: %d\n",starting_number_of_clusters);
-	struct hashmap seqsToCompare;
-	hashmap_init(&seqsToCompare, hashmap_hash_string, hashmap_compare_string, numberOfSequencesLeft);
+	//struct hashmap seqsToCompare;
+	//hashmap_init(&seqsToCompare, hashmap_hash_string, hashmap_compare_string, numberOfSequencesLeft);
 	char*** cluster_seqs = (char***)malloc(MAXNUMBEROFCLUSTERS*sizeof(char **));
 	for(i=0; i<MAXNUMBEROFCLUSTERS; i++){
 		cluster_seqs[i]=(char **)malloc((fasta_specs[0])*sizeof(char *));
@@ -1698,7 +1753,7 @@ int main(int argc, char **argv){
 		}
 		if (dontadd==0){
 			chooseK[index] = random_number;
-			hashmap_put(&seqsToCompare,seqNames[random_number],1);
+			//hashmap_put(&seqsToCompare,seqNames[random_number],1);
 			//hashmap_put(&assignedSeqs,seqNames[random_number],1);
 			int place=-1;
 			for(j=fasta_specs[0]-1; j>=0; j--){
@@ -1763,9 +1818,10 @@ int main(int argc, char **argv){
 	int* indexArray = (int *)malloc((2*kseqs-1)*sizeof(int));
 	sortArray(branchLengths,indexArray,kseqs);
 	printf("Longest Branch: %lf node: %d\n",branchLengths[0],indexArray[0]);
+	//numberOfNodesToCut = findMaxClade(tree,kseqs);
 	for(i=0; i<2*kseqs-1; i++){
 		//if (tree[0][indexArray[i]].nd > 1 && numberOfNodesToCut < opt.number_of_clusters-1){
-		if (numberOfNodesToCut < opt.number_of_clusters-1){
+		if ( numberOfNodesToCut < opt.number_of_clusters-1 && tree[0][indexArray[i]].nd > 1){
 			printf("cutting at node %d\n",indexArray[i]);
 			numberOfNodesToCut++;
 			//printdescendants(tree,indexArray[i],numberOfNodesToCut,0,kseqs);
@@ -1951,9 +2007,10 @@ int main(int argc, char **argv){
 		free(cluster_seqs[i]);
 	}
 	free(cluster_seqs);
-	if ( opt.clstr_format==0 ){
+	if ( opt.output_fasta==1 ){
 		printInitialClusters(starting_number_of_clusters,numberOfNodesToCut,clusterSize,opt,fasta_specs[0],taxMap,opt.hasTaxFile,seqNames,sequences);
-	}else{
+	}
+	if ( opt.clstr_format==1 ){
 		if (numberOfUnAssigned == fasta_specs[0]){
 			clstr = (char ***)malloc(MAXNUMBEROFCLUSTERS*sizeof(char **));
 			clstr_lengths = (int **)malloc(MAXNUMBEROFCLUSTERS*sizeof(int *));
@@ -1969,9 +2026,9 @@ int main(int argc, char **argv){
 		}
 		printInitialClusters_CLSTR(starting_number_of_clusters,numberOfNodesToCut,clusterSize,opt,fasta_specs[0],fasta_specs[1],clstr,clstr_lengths,seqNames,sequences);
 	}
+	double averageAvg = 0;
 	printf("count is %d\n",count);
 	//double shortestDistBetweenClusters = averageDistances[0];
-	double averageAvg = 0;
 	for(i=0; i<count; i++){
 		averageAvg = averageDistances[i] + averageAvg;
 	}
@@ -1995,29 +2052,30 @@ int main(int argc, char **argv){
 		mstr[i].numAssigned = 0;
 		mstr[i].num_threads = opt.numthreads;
 		mstr[i].number_of_clusters = numberOfNodesToCut;
-		mstr[i].clusterNames = (char ***)malloc(numberOfNodesToCut*sizeof(char **));
+		//mstr[i].clusterNames = (char ***)malloc(numberOfNodesToCut*sizeof(char **));
 		mstr[i].fasta_specs = fasta_specs;
-		mstr[i].seqNames = (char **)malloc(opt.numberOfLinesToRead*sizeof(char *));
-		mstr[i].sequences = (char **)malloc(opt.numberOfLinesToRead*sizeof(char *));
-		mstr[i].taxonomy = (char **)malloc(opt.numberOfLinesToRead*sizeof(char *));
+		mstr[i].nw_struct = initialize_nw(fasta_specs[3]);
+		//mstr[i].seqNames = (char **)malloc(opt.numberOfLinesToRead*sizeof(char *));
+		//mstr[i].sequences = (char **)malloc(opt.numberOfLinesToRead*sizeof(char *));
+		//mstr[i].taxonomy = (char **)malloc(opt.numberOfLinesToRead*sizeof(char *));
 		mstr[i].chooseK = (int *)malloc(kseqs*sizeof(int));
 		for(j=0; j<kseqs; j++){
 			mstr[i].chooseK[j] = chooseK[j];
 		}
-		for(j=0; j<opt.numberOfLinesToRead; j++){
-			mstr[i].seqNames[j] = (char *)malloc((fasta_specs[2]+1)*sizeof(char));
-			mstr[i].sequences[j] = (char *)malloc((fasta_specs[1]+1)*sizeof(char));
-			mstr[i].taxonomy[j] = (char *)malloc(FASTA_MAXLINE*sizeof(char));
-		}
-		for(j=0; j<numberOfNodesToCut; j++){
-			mstr[i].clusterNames[j]=(char **)malloc(clusterSize[j]*sizeof(char *));
-			for(k=0; k<clusterSize[j]; k++){
-				mstr[i].clusterNames[j][k]=(char *)malloc(MAXNAME*sizeof(char));
+		//for(j=0; j<opt.numberOfLinesToRead; j++){
+		//	mstr[i].seqNames[j] = (char *)malloc((fasta_specs[2]+1)*sizeof(char));
+		//	mstr[i].sequences[j] = (char *)malloc((fasta_specs[1]+1)*sizeof(char));
+		//	mstr[i].taxonomy[j] = (char *)malloc(FASTA_MAXLINE*sizeof(char));
+		//}
+		//for(j=0; j<numberOfNodesToCut; j++){
+			//mstr[i].clusterNames[j]=(char **)malloc(clusterSize[j]*sizeof(char *));
+			//for(k=0; k<clusterSize[j]; k++){
+				//mstr[i].clusterNames[j][k]=(char *)malloc(MAXNAME*sizeof(char));
 				//mstr[i].clusterSeqs[j][k]=(char *)malloc((fasta_specs[1]+1)*sizeof(char));
-				strcpy(mstr[i].clusterNames[j][k],clusters[j][k]);
+				//strcpy(mstr[i].clusterNames[j][k],clusters[j][k]);
 				//strcpy(mstr[i].clusterSeqs[j][k],(char *)hashmap_get(&map,clusters[j][k]));
-			}
-		}
+			//}
+		//}
 		mstr[i].clusterSeqs = (char ***)malloc((numberOfNodesToCut+PADDING)*sizeof(char **));
 		for(j=0; j<numberOfNodesToCut+PADDING; j++){
 			if (j<numberOfNodesToCut){
@@ -2055,20 +2113,20 @@ int main(int argc, char **argv){
 			}
 		}
 		//allocateMemForResults(mstr[i].str, opt.numberOfLinesToRead, opt.numthreads, numberOfNodesToCut, averageAvg);
-		mstr[i].str->accession = (char **)malloc((opt.numberOfLinesToRead)*sizeof(char *));
-		mstr[i].str->savedForNewClusters = (char **)malloc((opt.numberOfLinesToRead+10)*sizeof(char *));
-		mstr[i].str->clusterNumber = (int *)malloc(opt.numberOfLinesToRead*sizeof(int));
-		mstr[i].str->assigned = (char **)malloc((opt.numberOfLinesToRead*sizeof(char *)));
+		//mstr[i].str->accession = (char **)malloc((opt.numberOfLinesToRead)*sizeof(char *));
+		//mstr[i].str->savedForNewClusters = (char **)malloc((opt.numberOfLinesToRead)*sizeof(char *));
+		//mstr[i].str->clusterNumber = (int *)malloc(opt.numberOfLinesToRead*sizeof(int));
+		//mstr[i].str->assigned = (char **)malloc((opt.numberOfLinesToRead*sizeof(char *)));
 		mstr[i].str->numassigned=0;
-		for(j=0; j<opt.numberOfLinesToRead; j++){
-			mstr[i].str->accession[j] = malloc((fasta_specs[2]+1)*sizeof(char));
-			mstr[i].str->assigned[j] = malloc((fasta_specs[2]+1)*sizeof(char));
-			mstr[i].str->savedForNewClusters[j] = malloc((fasta_specs[2]+1)*sizeof(char));
-			mstr[i].str->clusterNumber[j]=-1;
-			memset(mstr[i].str->assigned[j],'\0',fasta_specs[2]+1);
-			memset(mstr[i].str->accession[j],'\0',fasta_specs[2]+1);
-			memset(mstr[i].str->savedForNewClusters[j],'\0',fasta_specs[2]+1);
-		}
+		//for(j=0; j<opt.numberOfLinesToRead; j++){
+			//mstr[i].str->accession[j] = malloc((fasta_specs[2]+1)*sizeof(char));
+			//mstr[i].str->assigned[j] = malloc((fasta_specs[2]+1)*sizeof(char));
+			//mstr[i].str->savedForNewClusters[j] = malloc((fasta_specs[2]+1)*sizeof(char));
+			//mstr[i].str->clusterNumber[j]=-1;
+			//memset(mstr[i].str->assigned[j],'\0',fasta_specs[2]+1);
+			//memset(mstr[i].str->accession[j],'\0',fasta_specs[2]+1);
+			//memset(mstr[i].str->savedForNewClusters[j],'\0',fasta_specs[2]+1);
+		//}
 		mstr[i].str->average = average;
 		mstr[i].str->number_of_clusters = numberOfNodesToCut;
 		mstr[i].str->clusterSizes = (int *)malloc(MAXNUMBEROFCLUSTERS*sizeof(int));
@@ -2076,20 +2134,20 @@ int main(int argc, char **argv){
 			mstr[i].str->clusterSizes[j] = clusterSize[j];
 		}
 		//mstr[i].seqsToCompare = seqsToCompare;
-		mstr[i].assignedSeqs = (char **)malloc(fasta_specs[0]*sizeof(char *));
-		for( j=0; j<fasta_specs[0]; j++){
-			mstr[i].assignedSeqs[j] = (char *)malloc(MAXNAME*sizeof(char));
-			mstr[i].assignedSeqs[j][0] = '\0';
-		}
-		int place;
-		for(j=fasta_specs[0]-1; j>=0; j--){
-			if (assigned[j][0]=='\0'){
-				place=j;
-			}
-		}
-		for( j=0; j<place; j++){
-			strcpy(mstr[i].assignedSeqs[j],assigned[j]);
-		}
+		//mstr[i].assignedSeqs = (char **)malloc(fasta_specs[0]*sizeof(char *));
+		//for( j=0; j<fasta_specs[0]; j++){
+		//	mstr[i].assignedSeqs[j] = (char *)malloc(MAXNAME*sizeof(char));
+		//	mstr[i].assignedSeqs[j][0] = '\0';
+		//}
+		//int place;
+		//for(j=fasta_specs[0]-1; j>=0; j--){
+		//	if (assigned[j][0]=='\0'){
+		//		place=j;
+		//	}
+		//}
+		//for( j=0; j<place; j++){
+		//	strcpy(mstr[i].assignedSeqs[j],assigned[j]);
+		//}
 		mstr[i].chooseK = (int *)malloc(kseqs*sizeof(int));
 		for(j=0; j<kseqs; j++){
 			mstr[i].chooseK[j] = chooseK[j];
@@ -2121,7 +2179,21 @@ int main(int argc, char **argv){
 			mstr[i].end=end;
 			mstr[i].largest_cluster=largest_cluster;
 			mstr[i].threadnumber=i;
+			mstr[i].seqNames = (char **)malloc((end-start)*sizeof(char *));
+			mstr[i].sequences = (char **)malloc((end-start)*sizeof(char *));
+			mstr[i].taxonomy = (char **)malloc((end-start)*sizeof(char *));
+			mstr[i].str->accession = (char **)malloc((end-start)*sizeof(char *));
+			mstr[i].str->savedForNewClusters = (char **)malloc((end-start)*sizeof(char *));
+			mstr[i].str->clusterNumber = (int *)malloc((end-start)*sizeof(char *));
 			for(k=0; k<end-start; k++){
+				mstr[i].seqNames[k] = (char *)malloc((fasta_specs[2]+1)*sizeof(char));
+				mstr[i].sequences[k] = (char *)malloc((fasta_specs[1]+1)*sizeof(char));
+				mstr[i].taxonomy[k] = (char *)malloc(FASTA_MAXLINE*sizeof(char));
+				mstr[i].str->accession[k] = (char *)malloc((fasta_specs[2]+1)*sizeof(char));
+				mstr[i].str->savedForNewClusters[k] = (char *)malloc((fasta_specs[2]+1)*sizeof(char));
+			       	mstr[i].str->clusterNumber[k] = -1;
+				memset(mstr[i].str->accession[k],'\0',fasta_specs[2]+1);
+				memset(mstr[i].str->savedForNewClusters[k],'\0',fasta_specs[2]+1);
 				strcpy(mstr[i].seqNames[k],seqNames[j+k]);
 				strcpy(mstr[i].sequences[k],sequences[j+k]);
 				strcpy(mstr[i].taxonomy[k],taxonomy[j+k]);
@@ -2129,7 +2201,15 @@ int main(int argc, char **argv){
 			j=j+numberToAssign;
 		}
 		for(i=0; i<opt.numthreads; i++){
-			pthread_create(&threads[i], NULL, runAssignToCluster, &mstr[i]);
+			size_t default_stack_size;
+			pthread_attr_t stack_size_custom_attr;
+			pthread_attr_init(&stack_size_custom_attr);
+			pthread_attr_getstacksize(&stack_size_custom_attr,&default_stack_size);
+			if (default_stack_size < MIN_REQ_SSIZE){
+				pthread_attr_setstacksize(&stack_size_custom_attr,(size_t)MIN_REQ_SSIZE);
+			}
+			//pthread_create(&threads[i], NULL, runAssignToCluster, &mstr[i]);
+			pthread_create(&threads[i], &stack_size_custom_attr, runAssignToCluster, &mstr[i]);
 		}
 		for(i=0; i<opt.numthreads; i++){
 			pthread_join(threads[i], NULL);
@@ -2172,55 +2252,61 @@ int main(int argc, char **argv){
 			}
 		}
 	}
-	for(i=0; i<opt.numthreads; i++){
-		for(j=0; j<mstr[i].str->numassigned; j++){
-			int place;
-			for(k=fasta_specs[0]-1; k>=0; k--){
-				if (assigned[k]=='\0'){
-					place=k;
-				}
-			}
-			strcpy(assigned[place],mstr[i].str->assigned[j]);
+	//for(i=0; i<opt.numthreads; i++){
+	//	for(j=0; j<mstr[i].str->numassigned; j++){
+	//		int place;
+	//		for(k=fasta_specs[0]-1; k>=0; k--){
+	//			if (assigned[k]=='\0'){
+	//				place=k;
+	//			}
+	//		}
+	//		strcpy(assigned[place],mstr[i].str->assigned[j]);
 			//hashmap_put(&assignedSeqs,mstr[i].str->assigned[j],1);
-		}
-	}
+	//	}
+	//}
 	for(i=0; i<opt.numthreads; i++){
-		if (opt.clstr_format==0){
+		if (opt.output_fasta==1){
 			printClusters(starting_number_of_clusters,mstr[i].str->number_of_clusters,fasta_specs[0],opt,taxonomy,mstr[i],mstr[i].numAssigned,taxMap,opt.hasTaxFile,seqNames,sequences);
-		}else{
+		}
+		if(opt.clstr_format==1){
 			saveCLSTR(starting_number_of_clusters,fasta_specs[0],mstr[i],mstr[i].numAssigned,clstr,clstr_lengths,fasta_specs[1],seqNames,sequences);
 		}
 	}
 	starting_number_of_clusters = starting_number_of_clusters + mstr[0].str->number_of_clusters - 1;
 	for(i=0; i<opt.numthreads; i++){
+		start=l;
+		end=l+numberToAssign;
+		if(i==opt.numthreads-1)
+			end=endOfAssign;
 		free(mstr[i].chooseK);
-		for(j=0; j<opt.numberOfLinesToRead; j++){
+		for(j=0; j<end-start; j++){
 			free(mstr[i].seqNames[j]);
 			free(mstr[i].sequences[j]);
 			free(mstr[i].taxonomy[j]);
 			free(mstr[i].str->accession[j]);
-			free(mstr[i].str->assigned[j]);
+			//free(mstr[i].str->assigned[j]);
 			free(mstr[i].str->savedForNewClusters[j]);
 		}
 		free(mstr[i].seqNames);
 		free(mstr[i].sequences);
 		free(mstr[i].taxonomy);
+		free(mstr[i].nw_struct);
 		free(mstr[i].str->accession);
-		free(mstr[i].str->assigned);
+		//free(mstr[i].str->assigned);
 		free(mstr[i].str->savedForNewClusters);
 		free(mstr[i].str->clusterNumber);
 		free(mstr[i].str->clusterSizes);
-		for(j=0; j<numberOfNodesToCut; j++){
-			for(k=0; k<clusterSize[j]; k++){
-				free(mstr[i].clusterNames[j][k]);
-			}
-			free(mstr[i].clusterNames[j]);
-		}
-		free(mstr[i].clusterNames);
-		for(j=0; j<fasta_specs[0]; j++){
-			free(mstr[i].assignedSeqs[j]);
-		}
-		free(mstr[i].assignedSeqs);
+		//for(j=0; j<numberOfNodesToCut; j++){
+			//for(k=0; k<clusterSize[j]; k++){
+			//	free(mstr[i].clusterNames[j][k]);
+			//}
+			//free(mstr[i].clusterNames[j]);
+		//}
+		//free(mstr[i].clusterNames);
+		//for(j=0; j<fasta_specs[0]; j++){
+		//	free(mstr[i].assignedSeqs[j]);
+		//}
+		//free(mstr[i].assignedSeqs);
 		for(j=0; j<numberOfNodesToCut+PADDING; j++){
 			if (j<numberOfNodesToCut){
 				if (j>0){
@@ -2238,29 +2324,12 @@ int main(int argc, char **argv){
 			free(mstr[i].clusterSeqs[j]);
 		}
 		free(mstr[i].clusterSeqs);
-
+		l=l+numberToAssign;
 	}
-	/*char** unassigned = (char **)malloc(fasta_specs[0]*sizeof(char *));
-	for(i=0; i<fasta_specs[0]; i++){
-		unassigned[i]=(char *)malloc(MAXNAME*sizeof(char));
-	}
-	for(i=0; i<fasta_specs[0]; i++){
-		int found = 0;
-		for(j=0;j<fasta_specs[0]; j++){
-			if (strcmp(assigned[j],seqNames[i])==1){
-				found=1;
-			}
-		}
-		if (found==0){
-			strcpy(unassigned,seqNames[i]);
-		}
-	}*/
 	for(i=0; i<fasta_specs[0]; i++){
 		memset(seqNames[i],'\0',fasta_specs[2]);
 		memset(sequences[i],'\0',fasta_specs[2]);
 	}
-	//hashmap_destroy(&map);
-	//hashmap_init(&map, hashmap_hash_string, hashmap_compare_string, fasta_specs[0]);
 	numberOfUnAssigned=countNumUnassigned(sequencesToClusterLater,fasta_specs);
 	numberOfSequencesLeft=numberOfUnAssigned;
 	for(i=0; i<numberOfUnAssigned; i++){
@@ -2271,30 +2340,23 @@ int main(int argc, char **argv){
 		free(actualSeqsToClusterLater[i]);
 	}
 	free(actualSeqsToClusterLater);
-	//for(i=0; i<numberOfUnAssigned; i++){
-	//	hashmap_put(&map,sequencesToClusterLater[i],actualSeqsToClusterLater[i]);
-	//}
-	//kseqs = numberOfUnAssigned/10;
 	free(clusterSize);
 	clock_gettime(CLOCK_MONOTONIC, &tend);
 	int* newClusterSizes = (int *)malloc(MAXNUMBEROFCLUSTERS*sizeof(int));
 	numberOfNodesToCut=findNewClusterSizes(newClusterSizes,fasta_specs);
 	printf("Finished! Took %lf seconds\n",((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec));
 	free(newClusterSizes);
-	//copy unassigned sequences to seqNames
-	//for(i=0; i<numberOfUnAssigned; i++){
-	//	strcpy(seqNames[i],sequencesToClusterLater[i]);
-	//}
-	hashmap_destroy(&seqsToCompare);
+	//hashmap_destroy(&seqsToCompare);
 	for(i=0; i<MAXNUMBEROFCLUSTERS; i++){
 		for(j=0;j<fasta_specs[0];j++){
 			memset(clusters[i][j],'\0',MAXNAME);
 		}
 	}
 	if (numberOfUnAssigned<=3){
-		if (opt.clstr_format==0){
+		if (opt.output_fasta==1){
 			printLessThanFour(numberOfUnAssigned, opt, taxMap, starting_number_of_clusters,seqNames, sequences);
-		}else{
+		}
+		if (opt.clstr_format==1){
 			printLessThanFour_CLSTR(numberOfUnAssigned, clstr, clstr_lengths,fasta_specs[1],seqNames, sequences);
 		}
 	}
@@ -2303,8 +2365,8 @@ int main(int argc, char **argv){
 	//freeMemForAlign(DATA,fasta_specs[1],mult);
 	//freeMemForDistMat(clusterSize,largest_cluster,distMat2);
 	freeClusters(kseqs);
-	freeSequences(fasta_specs[0],sequences,seqNames,taxonomy, sequencesToClusterLater,assigned);
+	freeSequences(fasta_specs[0],sequences,seqNames,taxonomy, sequencesToClusterLater);
 	free(fasta_specs);
 	free(chooseK);
-	hashmap_destroy(&map);
+	//hashmap_destroy(&map);
 }

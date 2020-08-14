@@ -18,14 +18,45 @@
 #include "alignment.h"
 #include "alignment_macros.h"
 
-const char align_col_mismatch[] = "\033[92m"; // Mismatch (GREEN)
-const char align_col_indel[] = "\033[91m"; // Insertion / deletion (RED)
+pthread_mutex_t lock;
+//const char align_col_mismatch[] = "\033[92m"; // Mismatch (GREEN)
+//const char align_col_indel[] = "\033[91m"; // Insertion / deletion (RED)
 // Pink used by SmithWaterman local alignment for printing surrounding bases
-const char align_col_context[] = "\033[95m";
-const char align_col_stop[] = "\033[0m";
-
+//const char align_col_context[] = "\033[95m";
+//const char align_col_stop[] = "\033[0m";
+/*int MAX2( int x, int y){
+	if ( x > y ){
+		return x;
+	}else{
+		return y;
+	}
+}
+int MIN2 ( int x, int y){
+	if ( x < y ){
+		return x;
+	}else{
+		return y;
+	}
+}
+int MAX3( int x, int y, int z){
+	if ( x >= y && x >= z ){
+		return x;
+	}else{
+		return MAX2(y,z);
+	}
+}
+int MIN3( int x, int y, int z ){
+	if ( x<=y && x<=z ){
+		return x;
+	}else{
+		return MIN2(y,z);
+	}
+}
+int MAX4( int w, int x, int y, int z){
+	return MAX2(MAX3(w,x,y),z);
+}*/
 // Fill in traceback matrix
-static void alignment_fill_matrices(aligner_t *aligner, char is_sw)
+void alignment_fill_matrices(aligner_t *aligner, char is_sw)
 {
   score_t *match_scores = aligner->match_scores;
   score_t *gap_a_scores = aligner->gap_a_scores;
@@ -86,6 +117,7 @@ static void alignment_fill_matrices(aligner_t *aligner, char is_sw)
   index_left = score_width;
   index = score_width+1;
 
+	//pthread_mutex_lock(&lock);
   for(seq_j = 0; seq_j < len_j; seq_j++)
   {
     for(seq_i = 0; seq_i < len_i; seq_i++)
@@ -94,10 +126,10 @@ static void alignment_fill_matrices(aligner_t *aligner, char is_sw)
       // substitution penalty
       bool is_match;
       int substitution_penalty;
-
+	//pthread_mutex_lock(&lock);
       scoring_lookup(scoring, *(aligner->seq_a + seq_i), *(aligner->seq_b + seq_j),
                      &substitution_penalty, &is_match);
-
+	//pthread_mutex_unlock(&lock);
       if(scoring->no_mismatches && !is_match)
       {
         match_scores[index] = min;
@@ -108,11 +140,13 @@ static void alignment_fill_matrices(aligner_t *aligner, char is_sw)
         // 1) continue alignment
         // 2) close gap in seq_a
         // 3) close gap in seq_b
+	//pthread_mutex_lock(&lock);
         match_scores[index]
           = MAX4(match_scores[index_upleft] + substitution_penalty,
                  gap_a_scores[index_upleft] + substitution_penalty,
                  gap_b_scores[index_upleft] + substitution_penalty,
                  min);
+	//pthread_mutex_unlock(&lock);
       }
 
       // Long arithmetic since some INTs are set to min and penalty is -ve
@@ -121,17 +155,21 @@ static void alignment_fill_matrices(aligner_t *aligner, char is_sw)
       // Update gap_a_scores[i][j] from position [i][j-1]
       if(seq_i == len_i-1 && scoring->no_end_gap_penalty)
       {
+	  //    pthread_mutex_lock(&lock);
         gap_a_scores[index] = MAX3(match_scores[index_up],
                                    gap_a_scores[index_up],
                                    gap_b_scores[index_up]);
+	//pthread_mutex_unlock(&lock);
       }
       else if(!scoring->no_gaps_in_a || seq_i == len_i-1)
       {
+	  //    pthread_mutex_lock(&lock);
         gap_a_scores[index]
           = MAX4(match_scores[index_up] + gap_open_penalty,
                  gap_a_scores[index_up] + gap_extend_penalty,
                  gap_b_scores[index_up] + gap_open_penalty,
                  min);
+	//pthread_mutex_unlock(&lock);
       }
       else
         gap_a_scores[index] = min;
@@ -139,17 +177,21 @@ static void alignment_fill_matrices(aligner_t *aligner, char is_sw)
       // Update gap_b_scores[i][j] from position [i-1][j]
       if(seq_j == len_j-1 && scoring->no_end_gap_penalty)
       {
+	      //pthread_mutex_lock(&lock);
         gap_b_scores[index] = MAX3(match_scores[index_left],
                                    gap_a_scores[index_left],
                                    gap_b_scores[index_left]);
+      	//pthread_mutex_unlock(&lock);
       }
       else if(!scoring->no_gaps_in_b || seq_j == len_j-1)
       {
+	      //pthread_mutex_lock(&lock);
         gap_b_scores[index]
           = MAX4(match_scores[index_left] + gap_open_penalty,
                  gap_a_scores[index_left] + gap_open_penalty,
                  gap_b_scores[index_left] + gap_extend_penalty,
                  min);
+	//pthread_mutex_unlock(&lock);
       }
       else
         gap_b_scores[index] = min;
@@ -165,6 +207,7 @@ static void alignment_fill_matrices(aligner_t *aligner, char is_sw)
     index_up++;
     index_upleft++;
   }
+//	pthread_mutex_unlock(&lock);
 }
 
 void aligner_align(aligner_t *aligner,
@@ -182,14 +225,15 @@ void aligner_align(aligner_t *aligner,
 
   if(aligner->capacity < new_capacity)
   {
-    aligner->capacity = ROUNDUP2POW(new_capacity);
+	aligner->capacity = ROUNDUP2POW(new_capacity);
     size_t mem = sizeof(score_t) * aligner->capacity;
     aligner->match_scores = realloc(aligner->match_scores, mem);
     aligner->gap_a_scores = realloc(aligner->gap_a_scores, mem);
     aligner->gap_b_scores = realloc(aligner->gap_b_scores, mem);
   }
-
+//pthread_mutex_lock(&lock);
   alignment_fill_matrices(aligner, is_sw);
+  //pthread_mutex_unlock(&lock);
 }
 
 void aligner_destroy(aligner_t *aligner)
@@ -222,6 +266,7 @@ void alignment_ensure_capacity(alignment_t* result, size_t strlength)
   if(result->capacity < capacity)
   {
     capacity = ROUNDUP2POW(capacity);
+   printf("ensure_capacity\n");
     result->result_a = realloc(result->result_a, sizeof(char)*capacity);
     result->result_b = realloc(result->result_b, sizeof(char)*capacity);
     result->capacity = capacity;
@@ -399,7 +444,7 @@ void alignment_print_matrices(const aligner_t *aligner)
   printf("\n");
 }
 
-void alignment_colour_print_against(const char *alignment_a,
+/*void alignment_colour_print_against(const char *alignment_a,
                                     const char *alignment_b,
                                     char case_sensitive)
 {
@@ -446,7 +491,7 @@ void alignment_colour_print_against(const char *alignment_a,
     // Stop all colours
     fputs(align_col_stop, stdout);
   }
-}
+}*/
 
 // Order of alignment_a / alignment_b is not important
 void alignment_print_spacer(const char* alignment_a, const char* alignment_b,

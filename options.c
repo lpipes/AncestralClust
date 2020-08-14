@@ -17,7 +17,7 @@ static struct option long_options[]=
 
 char usage[] = "\nNJclust [OPTIONS]\n\
 	\n\
-	-h, --help			usage: [OPTIONS] -i file.fasta -n [REQUIRED] -k [REQUIRED] \n\
+	-h, --help			usage: -i file.fasta -t file_taxonomy.txt -d output_directory\n\
 	-i, --infile			fasta to cluster\n\
 	-t, --infile_taxonomy		taxonomy of fasta to cluster (sorted)\n\
 	-n, --number_of_clusters	number of initial clusters\n\
@@ -54,7 +54,7 @@ void parse_options(int argc, char **argv, Options *opt){
 					fprintf(stderr, "Invalid fasta file\n");
 				break;
 			case 'f':
-				opt->clstr_format=0;
+				opt->output_fasta=1;
 				break;
 			case 't':
 				success = sscanf(optarg, "%s", opt->taxonomy);

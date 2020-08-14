@@ -112,7 +112,7 @@ void scoring_print(const scoring_t* scoring)
 
 
 // a, b must be lowercase if !scoring->case_sensitive
-static char _scoring_check_wildcards(const scoring_t* scoring, char a, char b,
+char _scoring_check_wildcards(const scoring_t* scoring, char a, char b,
                                      int* score)
 {
   // Check if either characters are wildcards
@@ -133,11 +133,11 @@ static char _scoring_check_wildcards(const scoring_t* scoring, char a, char b,
 void scoring_lookup(const scoring_t* scoring, char a, char b,
                     int *score, bool *is_match)
 {
-  if(!scoring->case_sensitive)
+  /*if(!scoring->case_sensitive)
   {
     a = tolower(a);
     b = tolower(b);
-  }
+  }*/
 
   //#ifdef SEQ_ALIGN_VERBOSE
   //printf(" scoring_lookup(%c,%c)\n", a, b);
@@ -145,28 +145,29 @@ void scoring_lookup(const scoring_t* scoring, char a, char b,
 
   *is_match = (a == b);
 
-  if(scoring->no_mismatches && !*is_match)
+  /*if(scoring->no_mismatches && !*is_match)
   {
     // Check wildcards
     *is_match = _scoring_check_wildcards(scoring, a, b, score);
     return;
-  }
+  }*/
 
   // Look up in table
-  if(get_swap_bit(scoring,a,b))
+  /*if(get_swap_bit(scoring,a,b))
   {
-    *score = scoring->swap_scores[(size_t)a][(size_t)b];
+	  printf("swapping\n");
+	 *score = scoring->swap_scores[(size_t)a][(size_t)b];
     return;
-  }
+  }*/
 
   // Check wildcards
   // Wildcards are used in the order they are given
   // e.g. if we specify '--wildcard X 2 --wildcard Y 3' X:Y align with score 2
-  if(_scoring_check_wildcards(scoring, a, b, score))
+  /*if(_scoring_check_wildcards(scoring, a, b, score))
   {
     *is_match = 1;
     return;
-  }
+  }*/
 
   // Use match/mismatch
   if(scoring->use_match_mismatch)
@@ -185,9 +186,9 @@ void scoring_lookup(const scoring_t* scoring, char a, char b,
 // Some scoring systems
 //
 
-static char amino_acids[] = "ARNDCQEGHILKMFPSTWYVBZX*";
+char amino_acids[] = "ARNDCQEGHILKMFPSTWYVBZX*";
 
-static const int pam30[576] =
+const int pam30[576] =
 { 6, -7, -4, -3, -6, -4, -2, -2, -7, -5, -6, -7, -5, -8, -2,  0, -1,-13, -8, -2, -3, -3, -3,-17,
  -7,  8, -6,-10, -8, -2, -9, -9, -2, -5, -8,  0, -4, -9, -4, -3, -6, -2,-10, -8, -7, -4, -6,-17,
  -4, -6,  8,  2,-11, -3, -2, -3,  0, -5, -7, -1, -9, -9, -6,  0, -2, -8, -4, -8,  6, -3, -3,-17,
@@ -213,7 +214,7 @@ static const int pam30[576] =
  -3, -6, -3, -5, -9, -5, -5, -5, -5, -5, -6, -5, -5, -8, -5, -3, -4,-11, -7, -5, -5, -5, -5,-17,
 -17,-17,-17,-17,-17,-17,-17,-17,-17,-17,-17,-17,-17,-17,-17,-17,-17,-17,-17,-17,-17,-17,-17,  1};
 
-static const int pam70[576] =
+const int pam70[576] =
 { 5, -4, -2, -1, -4, -2, -1,  0, -4, -2, -4, -4, -3, -6,  0,  1,  1, -9, -5, -1, -1, -1, -2,-11,
  -4,  8, -3, -6, -5,  0, -5, -6,  0, -3, -6,  2, -2, -7, -2, -1, -4,  0, -7, -5, -4, -2, -3,-11,
  -2, -3,  6,  3, -7, -1,  0, -1,  1, -3, -5,  0, -5, -6, -3,  1,  0, -6, -3, -5,  5, -1, -2,-11,
@@ -239,7 +240,7 @@ static const int pam70[576] =
  -2, -3, -2, -3, -6, -2, -3, -3, -3, -3, -4, -3, -3, -5, -3, -1, -2, -7, -5, -2, -2, -3, -3,-11,
 -11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,-11,  1};
 
-static const int blosum80[576] =
+const int blosum80[576] =
 { 7,-3,-3,-3,-1,-2,-2, 0,-3,-3,-3,-1,-2,-4,-1, 2, 0,-5,-4,-1,-3,-2,-1,-8,
  -3, 9,-1,-3,-6, 1,-1,-4, 0,-5,-4, 3,-3,-5,-3,-2,-2,-5,-4,-4,-2, 0,-2,-8,
  -3,-1, 9, 2,-5, 0,-1,-1, 1,-6,-6, 0,-4,-6,-4, 1, 0,-7,-4,-5, 5,-1,-2,-8,
@@ -265,7 +266,7 @@ static const int blosum80[576] =
  -1,-2,-2,-3,-4,-2,-2,-3,-2,-2,-2,-2,-2,-3,-3,-1,-1,-5,-3,-2,-3,-1,-2,-8,
  -8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8,-8, 1};
 
-int blosum62[576] =
+const int blosum62[576] =
 { 4,-1,-2,-2, 0,-1,-1, 0,-2,-1,-1,-1,-1,-2,-1, 1, 0,-3,-2, 0,-2,-1, 0,-4,
  -1, 5, 0,-2,-3, 1, 0,-2, 0,-3,-2, 2,-1,-3,-2,-1,-1,-3,-2,-3,-1, 0,-1,-4,
  -2, 0, 6, 1,-3, 0, 0, 0, 1,-3,-3, 0,-2,-3,-2, 1, 0,-4,-2,-3, 3, 0,-1,-4,
@@ -291,9 +292,9 @@ int blosum62[576] =
   0,-1,-1,-1,-2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-2, 0, 0,-2,-1,-1,-1,-1,-1,-4,
  -4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4,-4, 1};
 
-static const char dna_bases[] = "AaCcGgTt";
+const char dna_bases[] = "AaCcGgTt";
 
-static const int sub_matrix[64] =
+const int sub_matrix[64] =
 { 2, 2,-4,-4,-4,-4,-4,-4,
   2, 2,-4,-4,-4,-4,-4,-4,
  -4,-4, 5, 5,-4,-4,-4,-4,

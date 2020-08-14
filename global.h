@@ -14,7 +14,8 @@
 #define MAXNUMBEROFKSEQS 10000
 #define MAXNUMINCLUSTER 10000
 #define PADDING 500
-
+#define MIN_REQ_SSIZE 81920
+//#define MIN_REQ_SSIZE 83886080
 typedef struct node{
 	int down;
 	int up[2];
@@ -23,6 +24,7 @@ typedef struct node{
 	char* name;
 	int nodeToCut;
 	int depth;
+	double distance;
 }node;
 
 typedef struct Options{
@@ -40,6 +42,7 @@ typedef struct Options{
 	int largest_cluster;
 	int hasTaxFile;
 	int clstr_format;
+	int output_fasta;
 }Options;
 
 typedef struct nw_alignment{
@@ -50,7 +53,7 @@ typedef struct nw_alignment{
 
 typedef struct resultsStruct{
 	char** accession;
-	char** assigned;
+	//char** assigned;
 	int numassigned;
 	int* clusterNumber;
 	double average;
@@ -69,9 +72,10 @@ typedef struct mystruct{
 	int number_of_kseqs;
 	int largest_cluster;
 	int* clusterSize;
-	char*** clusterNames;
+	//char*** clusterNames;
 	char*** clusterSeqs;
 	int* chooseK;
+	nw_alignment* nw_struct;
 	int* fasta_specs;
 	char** seqNames;
 	char** sequences;
@@ -79,7 +83,7 @@ typedef struct mystruct{
 	int threadnumber;
 	//struct hashmap seqsToCompare;
 	//struct hashmap assignedSeqs;
-	char** assignedSeqs;
+	//char** assignedSeqs;
 	resultsStruct *str;
 	int numAssigned;
 	char buffer[9999];
