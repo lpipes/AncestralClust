@@ -17,6 +17,8 @@
 
 #include "alignment.h"
 #include "alignment_macros.h"
+#include "malloc-2.8.3.h"
+#include "lran2.h"
 
 pthread_mutex_t lock;
 //const char align_col_mismatch[] = "\033[92m"; // Mismatch (GREEN)
@@ -266,7 +268,6 @@ void alignment_ensure_capacity(alignment_t* result, size_t strlength)
   if(result->capacity < capacity)
   {
     capacity = ROUNDUP2POW(capacity);
-   printf("ensure_capacity\n");
     result->result_a = realloc(result->result_a, sizeof(char)*capacity);
     result->result_b = realloc(result->result_b, sizeof(char)*capacity);
     result->capacity = capacity;

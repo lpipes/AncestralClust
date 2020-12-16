@@ -141,11 +141,11 @@ void needleman_wunsch_align2(const char *a, const char *b,
   int alignment_len = longest_alignment - first_char;
 
   // Use memmove
-  //memmove(alignment_a, alignment_a+first_char, alignment_len);
-  //memmove(alignment_b, alignment_b+first_char, alignment_len);
+  memmove(alignment_a, alignment_a+first_char, alignment_len);
+  memmove(alignment_b, alignment_b+first_char, alignment_len);
 //pthread_mutex_lock(&lock);
-  strcpy(alignment_a,alignment_a+first_char);
-strcpy(alignment_b,alignment_b+first_char);
+  //strcpy(alignment_a,alignment_a+first_char);
+//strcpy(alignment_b,alignment_b+first_char);
 //pthread_mutex_unlock(&lock);
   //	alignment_a=strdup(alignment_a+first_char);
 //	alignment_b=strdup(alignment_b+first_char);

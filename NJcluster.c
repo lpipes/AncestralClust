@@ -15,7 +15,17 @@ char*** clusters;
 //char** seqNames;
 //char** sequences;
 pthread_mutex_t lock;
-
+double LRVECnc[4][4], RRVECnc[4][4], RRVALnc[4], PMATnc[2][4][5];
+double LRVEC[STATESPACE][STATESPACE], RRVEC[STATESPACE][STATESPACE], RRVAL[STATESPACE], PMAT1[STATESPACE][STATESPACE], PMAT2[STATESPACE][STATESPACE];
+double parameters[10] = {0.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0};
+int COUNT2;//counting the number of tiems the likelihood function is called.
+int COUNT; //this one counts how many times the likelihood function has been called
+int localnode;
+double *localpi, *statevector, *UFCnc, **templike_nc;
+double Logfactorial[MAXNUMBEROFINDINSPECIES];
+double currentestimate[10]; //DELETEME
+node** treeArr;
+char** rootSeqs;
 void setNumSeq(FILE* fasta, int* fasta_specs){
 	char buffer[FASTA_MAXLINE];
 	int numSeq = 0;
@@ -290,7 +300,7 @@ void updatematrix(double **matrix, int k, int n){
 		}
 	}
 }
-int NJ(node** tree, double** distMat,int clusterSize,int whichTree){
+int NJ(node** tree, double** distMat,int clusterSize,int whichTree, int whichTree2){
 	double *r, minval, D, u1;
 	int child1, child2, i, j, n, min, pair[2], newnode, *nodenum;
 	r = malloc(clusterSize*(sizeof(double)));
@@ -334,10 +344,10 @@ int NJ(node** tree, double** distMat,int clusterSize,int whichTree){
 		tree[whichTree][child1].down=newnode;
 		tree[whichTree][child2].down=newnode;
 		if (tree[whichTree][child1].up[0]==-1){
-			strcpy(tree[whichTree][child1].name,clusters[whichTree][index[pair[0]]]);
+			strcpy(tree[whichTree][child1].name,clusters[whichTree2][index[pair[0]]]);
 		}
 		if (tree[whichTree][child2].up[1]==-1){
-			strcpy(tree[whichTree][child2].name,clusters[whichTree][index[pair[1]]]);
+			strcpy(tree[whichTree][child2].name,clusters[whichTree2][index[pair[1]]]);
 		}
 		// HERE WE DISALLOW NEGATIVE BRANCHLENGTHS!  IS THIS THE BEST THING TO DO?
 		tree[whichTree][child2].distance = distMat[pair[0]][pair[1]];
@@ -384,10 +394,10 @@ int NJ(node** tree, double** distMat,int clusterSize,int whichTree){
 	tree[whichTree][child1].down=newnode;
 	tree[whichTree][child2].down=newnode;
 	if (tree[whichTree][child1].up[0]==-1 && strcmp(tree[whichTree][child1].name,"internal")==0){
-		strcpy(tree[whichTree][child1].name,clusters[whichTree][index[0]]);
+		strcpy(tree[whichTree][child1].name,clusters[whichTree2][index[0]]);
 	}
 	if (tree[whichTree][child2].up[0]==-1 && strcmp(tree[whichTree][child2].name,"internal")==0){
-		strcpy(tree[whichTree][child1].name,clusters[whichTree][index[0]]);
+		strcpy(tree[whichTree][child1].name,clusters[whichTree2][index[0]]);
 	}	
 	if (distMat[0][1] > MINBL*2.0)  // HERE WE DISALLOW NEGATIVE BRANCHLENGTHS!  IS THIS THE BEST THING TO DO?
 		tree[whichTree][child1].bl = tree[whichTree][child2].bl = distMat[0][1]/2.0;
@@ -599,7 +609,7 @@ void calculateAverageDist(char** seqsA, char** seqsB, int sizeA, int sizeB, int 
 	alignment_free(aln);
 	needleman_wunsch_free(nw);
 }
-double findShortestDist(char** clusterSeqs, char* seq, int clusterSize, int longestSeq, nw_alignment* nw_struct, double** distMat, int** DATA, int* mult){
+double findShortestDist(int index, char* seq, int clusterSize, int longestSeq, nw_alignment* nw_struct, double** distMat, int** DATA, int* mult){
 	int i,j;
 	/*nw_aligner_t *nw;
 	alignment_t *aln;
@@ -627,7 +637,7 @@ double findShortestDist(char** clusterSeqs, char* seq, int clusterSize, int long
 	*/
 	for(i=0; i<clusterSize; i++){
 		//pthread_mutex_lock(&lock);
-		needleman_wunsch_align(clusterSeqs[i],seq,nw_struct->scoring,nw_struct->nw,nw_struct->aln);
+		needleman_wunsch_align(rootSeqs[index],seq,nw_struct->scoring,nw_struct->nw,nw_struct->aln);
 		//pthread_mutex_unlock(&lock);
 		int alignment_length = strlen(nw_struct->aln->result_a);
 		//int** DATA = (int **)malloc(2*sizeof(int *));
@@ -1133,7 +1143,8 @@ void *runAssignToCluster(void *ptr){
 					//}
 				//}
 				//pthread_mutex_lock(&lock);
-				distance=findShortestDist(clusterSeqs[j],sequences[i],clusterSize[j],fasta_specs[3],nw_struct,distMat2,DATA,mult);
+				//distance=findShortestDist(clusterSeqs[j],sequences[i],clusterSize[j],fasta_specs[3],nw_struct,distMat2,DATA,mult);
+				distance=findShortestDist(j-1,sequences[i],1,fasta_specs[3],nw_struct,distMat2,DATA,mult);
 				//pthread_mutex_unlock(&lock);
 				if (distance < shortest_distance){
 					shortest_distance = distance;
@@ -1480,13 +1491,13 @@ void findLeaves(node** tree, int node, int whichTree, int* parentCuts, int** clu
 		//nodesInCluster = (int *)hashmap_get(&clusterhash,parentCut);
 		int i=0;
 		int index=-1;
-		for(i=0; i<100; i++){
+		for(i=0; i<number_of_sequences; i++){
 			if ( parentCuts[i]==parentCut){
 				index=i;
 			}
 		}
 		if (index==-1){
-			for(i=99; i>=0; i--){
+			for(i=number_of_sequences; i>=0; i--){
 				if (parentCuts[i]==-1){
 					index=i;
 				}
@@ -1494,7 +1505,7 @@ void findLeaves(node** tree, int node, int whichTree, int* parentCuts, int** clu
 		}
 		parentCuts[index]=parentCut;
 		int placement=-1;
-		for(i=99; i>=0; i--){
+		for(i=number_of_sequences; i>=0; i--){
 			if (clusterarr[index][i]==-1){
 				placement=i;
 			}
@@ -1617,6 +1628,606 @@ void shiftColumns(int kseqs){
 		free(tmp[i]);
 	}
 	free(tmp);
+}
+void createTreesForClusters(node** treeArr, int number_of_clusters, int* clusterSize, char*** cluster_seqs, char*** clusters, int* fasta_specs, int* rootArr){
+	//int rootArr[number_of_clusters];
+	int i=0;
+	int j=0;
+	int k=0;
+	for(i=1; i<number_of_clusters; i++){
+		double** distMat = (double **)malloc((clusterSize[i]+1)*sizeof(double *));
+		for(j=0; j<clusterSize[i]+1; j++){
+			distMat[j] = (double *)malloc((clusterSize[i]+1)*sizeof(double));
+		}
+		for(j=0; j<clusterSize[i]+1; j++){
+			for(k=0; k<clusterSize[i]+1; k++){
+				distMat[j][k]=0;
+			}
+		}
+		createDistMat(cluster_seqs[i],distMat,clusterSize[i],fasta_specs);
+		rootArr[i-1] = NJ(treeArr,distMat,clusterSize[i],i-1,i);
+		for(j=0; j<clusterSize[i]+1; j++){
+			free(distMat[j]);
+		}
+	}
+}
+void clearGlobals(){
+	int i,j, k;
+	for(i=0;i<STATESPACE;i++){
+		RRVAL[i]=0;
+		for(j=0; j<STATESPACE;j++){
+			LRVEC[i][j]=0;
+			RRVEC[i][j]=0;
+			PMAT1[i][j]=0;
+			PMAT2[i][j]=0;
+		}
+	}
+	for(i=4;i<4;i++){
+		RRVALnc[i]=0;
+		for(i=4;i<4;i++){
+			LRVECnc[i][j]=0;
+			RRVECnc[i][j]=0;
+		}
+	}
+	for (i=0;i<4;i++){
+		PMATnc[0][i][4]=1.0;//missing data
+		PMATnc[1][i][4]=1.0;//missing data
+	}
+	parameters[0]=0.0;
+	for(i=1;i<10;i++){
+		parameters[i]=1.0;
+	}
+}
+void inittransitionmatrixnc(double pi[4]){
+	int i, j;
+	double sum, piT, RIVAL[4], RIVEC[4][4],  A[4][4], workspace[8];
+	for (i=0; i<8; i++){
+		workspace[i]=0;
+	}
+	A[0][1]=pi[1]*parameters[4];
+	A[0][2]=pi[2]*parameters[5];
+	A[0][3]=pi[3]*parameters[6];
+	A[1][0]=pi[0]*parameters[4];
+	A[1][2]=pi[2]*parameters[7];
+	A[1][3]=pi[3]*parameters[8];
+	A[2][0]=pi[0]*parameters[5];
+	A[2][1]=pi[1]*parameters[7];
+	A[2][3]=pi[3]; //unscaled rate of GT = 1.0
+	A[3][0]=pi[0]*parameters[6];
+	A[3][1]=pi[1]*parameters[8];
+	A[3][2]=pi[2]; //unscaled rate of GT = 1.0
+	for (i=0; i<4; i++){
+		A[i][i]=0.0;
+		sum=0.0;
+		for (j=0; j<4; j++){
+			sum = sum + A[i][j];
+		}
+		A[i][i] = -sum;
+	}
+	if (eigen(1, A[0], 4, RRVALnc, RIVAL, RRVECnc[0], RIVEC[0], workspace) != 0){
+		printf("Transitions matrix did not converge or contained non-real values!\n");
+		exit(-1);
+	}
+	for (i=0; i<4; i++){
+		for (j=0; j<4; j++){
+			LRVECnc[i][j] = RRVECnc[i][j];
+		}
+	}
+	if (matinv(RRVECnc[0],4, 4, workspace) != 0){
+		printf("Could not invert matrix!\nResults may not be reliable!\n");
+	}
+}
+void maketransitionmatrixnc(int n, double t, int whichRoot){
+	int i, j, k;
+	double EXPOS[4];
+	for (k=0; k<4; k++){
+		EXPOS[k] = exp(t*RRVALnc[k]);
+		if ( EXPOS[k] < 0.000000 ){
+			printf("EXPOS[k]=%e\n",EXPOS[k]);
+		}
+	}
+	for (i=0; i<4; i++){
+		for (j=0; j<4; j++){
+			PMATnc[n][i][j] = 0.0;
+			for (k=0; k<4; k++){
+				PMATnc[n][i][j] =  PMATnc[n][i][j] + RRVECnc[k][j]*LRVECnc[i][k]*EXPOS[k];
+			}
+		}
+	}
+}
+void makeconnc(int node, double lambda, int whichRoot, int numbase, int numspec, int*** seqArr, int root){
+	int i, j, child, seqn, site;
+	double L, max;
+	child = treeArr[whichRoot][node].up[0];
+	if (treeArr[whichRoot][child].up[0]==-1){
+		maketransitionmatrixnc(0, lambda*treeArr[whichRoot][child].bl,whichRoot);
+		//seqn=child-numspec+1;
+		seqn=child;
+		for (site=0; site<numbase; site++){
+			for (i=0; i<4; i++){
+				treeArr[whichRoot][node].likenc[site][i] = PMATnc[0][i][seqArr[whichRoot][seqn][site]];
+			}
+			if (site==0 && node ==root) printf("node 10 (b=%i): %lf %lf %lf %lf\n",seqArr[whichRoot][seqn][site],PMATnc[0][0][seqArr[whichRoot][seqn][site]],PMATnc[0][1][seqArr[whichRoot][seqn][site]],PMATnc[0][2][seqArr[whichRoot][seqn][site]],PMATnc[0][3][seqArr[whichRoot][seqn][site]]);
+		}
+	}else{
+		makeconnc(child, lambda, whichRoot, numbase, numspec, seqArr, root);
+		maketransitionmatrixnc(0, lambda*treeArr[whichRoot][child].bl,whichRoot);
+		for (site=0; site<numbase; site++){
+			for (i=0; i<4; i++){
+				treeArr[whichRoot][node].likenc[site][i]=0.0;
+				for (j=0; j<4; j++){
+					treeArr[whichRoot][node].likenc[site][i] += PMATnc[0][i][j]*treeArr[whichRoot][child].likenc[site][j];
+				}
+			}
+		}
+
+	}
+	child = treeArr[whichRoot][node].up[1];
+	if (treeArr[whichRoot][child].up[1]==-1){
+		maketransitionmatrixnc(0,lambda*treeArr[whichRoot][child].bl,whichRoot);
+		//seqn=child-numspec+1;
+		seqn=child;
+		for (site=0; site<numbase; site++){
+			for (i=0; i<4; i++){
+				treeArr[whichRoot][node].likenc[site][i] = treeArr[whichRoot][node].likenc[site][i]*PMATnc[0][i][seqArr[whichRoot][seqn][site]];
+			}
+		}
+	}else{
+		makeconnc(child, lambda,whichRoot, numbase, numspec, seqArr, root);
+		maketransitionmatrixnc(0,lambda*treeArr[whichRoot][child].bl,whichRoot);
+		for (site=0; site<numbase; site++){
+			max=0.0;
+			for (i=0; i<4; i++){
+				L=0.0;
+				for (j=0; j<4; j++){
+					L += PMATnc[0][i][j]*treeArr[whichRoot][child].likenc[site][j];
+				}
+				if ((treeArr[whichRoot][node].likenc[site][i] = treeArr[whichRoot][node].likenc[site][i]*L)>max){
+					max = treeArr[whichRoot][node].likenc[site][i];
+				}
+			}
+			if (max<0.00000000001) printf("Warning, max = %lf\n",max);
+			for (i=0; i<4; i++){
+				treeArr[whichRoot][node].likenc[site][i]=treeArr[whichRoot][node].likenc[site][i]/max;
+			}
+			UFCnc[site] = UFCnc[site] + log(max);
+		}
+	}
+}
+double getlike_gamma(double par[],int whichRoot, int numbase, int root, int numspec, int*** seqArr){
+	double stand, L, loclike, **locloglike, max, pi[4], gampar[2], d, like = 0.0;
+	int i, j, k;
+	COUNT2++;
+	stand = 1.0+par[1]+par[2]+par[3];
+	pi[0]=par[1]/stand;
+	pi[1]=par[2]/stand;
+	pi[2]=par[3]/stand;
+	pi[3]=1.0-pi[0]-pi[1]-pi[2];
+	gampar[0]=gampar[1]=par[9]; //We are setting alpha=beta to keep a constant mean to avoid identifiability issues.  This is not the same as a standard gammma.
+	UFCnc = malloc(numbase*(sizeof(double)));
+	statevector = malloc(NUMCAT*(sizeof(double)));
+	locloglike = malloc(numbase*(sizeof(double *)));
+	for (i=0; i<numbase; i++){
+		locloglike[i] = malloc(NUMCAT*(sizeof(double)));
+	}
+	definegammaquantiles(NUMCAT, gampar);
+	statevector[0]=1.0;
+	inittransitionmatrixnc(pi);
+	for (j=0; j<NUMCAT; j++){
+		for (i=0; i<numbase; i++){
+			UFCnc[i]=0.0;
+		}
+		makeconnc(root, statevector[j],whichRoot,numbase,numspec,seqArr,root);
+		for (i=0; i<numbase; i++){
+			L=0.0;
+			for (k=0;k<4;k++){
+				L += treeArr[whichRoot][root].likenc[i][k]*pi[k];
+			}
+			if (L>0.0) locloglike[i][j] = log(L) + UFCnc[i];
+		}
+	}
+	for (i=0; i<numbase; i++){
+		loclike=0.0;
+		max = -100000000000.0;
+		for (j=0; j<NUMCAT; j++){
+			if (locloglike[i][j]>max){ //underflow protection
+				max=locloglike[i][j];
+			}
+		}
+		for (j=0; j<NUMCAT; j++){
+			d=locloglike[i][j]-max;
+			if (d>-100){
+				loclike += exp(d);
+			}
+		}
+		like = like + log(loclike) + max;
+	}
+	free(statevector);
+	for (i=0; i<numbase; i++){
+		free(locloglike[i]);
+	}
+	free(locloglike);
+	printf("LIKE: %lf\n",like - (double)numbase*log((double)NUMCAT));
+	printf("\n");
+	free(UFCnc);
+	return -like + (double)numbase*log((double)NUMCAT);
+}
+double like_bl_Arr(double par[2], int whichRoot, int numbase, int root, int numspec, int*** seqArr){
+	int i, j, s, base;
+	double b, p, L=0.0;
+	maketransitionmatrixnc(0,par[1],whichRoot);
+	for (s=0; s<numbase; s++){
+		p=0.0;
+		if (treeArr[whichRoot][localnode].up[0]==-1){
+			//base = seqArr[whichRoot][localnode-numspecArr[whichRoot]+1][s];
+			base = seqArr[whichRoot][localnode][s];
+			assert(base >= 0 && base <= 4);
+			if (base<4){
+				for (j=0; j<4; j++){
+					p += localpi[base]*PMATnc[0][base][j]*templike_nc[s][j];
+				}
+			}else{
+				p=1.0;
+			}
+		}else{
+			for (i=0; i<4; i++){
+				b=0;
+				for (j=0; j<4; j++){
+					b += PMATnc[0][i][j]*templike_nc[s][j];
+				}
+				p += b*localpi[i]*treeArr[whichRoot][localnode].likenc[s][i];
+			}
+		}
+		L += log(p);
+	} COUNT++;
+	return -L;
+}
+void maxbl_nc(int node, int parent, double pi[4], int precision, int whichRoot, int numbase, int*** seqArr, int root, int numspec){
+	double par[2], minpar[2], maxpar[2], L;
+	par[1]=treeArr[whichRoot][node].bl; /*This stuff should probably be cleaned up*/
+	minpar[1]=MINBL;
+	maxpar[1]=MAXBL;
+	localpi=pi;
+	localnode=node;
+	L = findmax_Arr(par, minpar, maxpar, 1, like_bl_Arr, precision, whichRoot, numbase, root, numspec, seqArr);
+	treeArr[whichRoot][node].bl = par[1];
+}
+void recurse_estimatebranchlengths(int node, double pi[4], int precision, int whichRoot, int numbase, int*** seqArr, int root, int numspec){
+	int i,j, s, parent, otherb, child1, child2;
+	double max, bl;
+	child1 = treeArr[whichRoot][node].up[0];
+	parent = treeArr[whichRoot][node].down;
+	bl = treeArr[whichRoot][node].bl;
+	if ((otherb = treeArr[whichRoot][parent].up[0])==node){
+		otherb = treeArr[whichRoot][parent].up[1];
+	}
+	maketransitionmatrixnc(1, treeArr[whichRoot][otherb].bl,whichRoot);
+	for (s=0; s<numbase; s++){
+		for (i=0; i<4; i++){
+			max=0.0;
+			if (treeArr[whichRoot][otherb].up[0]==-1){
+				//templike_nc[s][i] = PMATnc[1][i][seqArr[whichRoot][otherb-numspec+1][s]]; /*if(s==0) printf("temp[s][%i]: %lf (b=%i, %lf), ",i,templike_nc[s][i],seq[otherb-numspec+1][s], PMATnc[1][i][seq[otherb-numspec+1][s]]);*/
+				templike_nc[s][i] = PMATnc[1][i][seqArr[whichRoot][otherb][s]]; /*if(s==0) printf("temp[s][%i]: %lf (b=%i, %lf), ",i,templike_nc[s][i],seq[otherb-numspec+1][s], PMATnc[1][i][seq[otherb-numspec+1][s]]);*/
+			}else{
+				templike_nc[s][i]=0.0;
+				for (j=0; j<4; j++){
+					templike_nc[s][i]=templike_nc[s][i]+treeArr[whichRoot][otherb].likenc[s][j]*PMATnc[1][i][j];
+				}
+			}
+			if ((templike_nc[s][i]=templike_nc[s][i]*treeArr[whichRoot][parent].posteriornc[s][i])>max){
+				max=templike_nc[s][i];
+			}
+		}
+	}
+	maxbl_nc(node,  parent, pi,precision,whichRoot, numbase, seqArr, root, numspec);
+	maketransitionmatrixnc(0, treeArr[whichRoot][node].bl,whichRoot);
+	for (s=0; s<numbase; s++){
+		max=0.0;
+		for (i=0; i<4; i++){
+			treeArr[whichRoot][node].posteriornc[s][i]=0.0;
+			for (j=0; j<4; j++){
+				treeArr[whichRoot][node].posteriornc[s][i] = treeArr[whichRoot][node].posteriornc[s][i] + PMATnc[0][i][j]*templike_nc[s][j];
+			}
+			if (treeArr[whichRoot][node].posteriornc[s][i]>max){//more hysterical underflow protection
+				max=treeArr[whichRoot][node].posteriornc[s][i];
+			}
+		}
+		for (i=0; i<4; i++){
+			treeArr[whichRoot][node].posteriornc[s][i]=treeArr[whichRoot][node].posteriornc[s][i]/max;
+		}
+	}
+	if (child1>-1){
+		child2 = treeArr[whichRoot][node].up[1];
+		recurse_estimatebranchlengths(child1, pi, precision, whichRoot, numbase, seqArr, root, numspec);
+		recurse_estimatebranchlengths(child2, pi, precision, whichRoot, numbase, seqArr, root, numspec);
+	}
+}
+void estimatebranchlengths(double par[10], int precision, int whichRoot, int numbase, int root, int numspec, int*** seqArr){
+	int i, j, s, child1, child2;
+	double stand, pi[4];
+	for (i=0; i<10; i++){
+		currentestimate[i]=par[i];
+	}
+	doNRinits(1);
+	stand = 1.0+par[1]+par[2]+par[3];
+	pi[0]=par[1]/stand;
+	pi[1]=par[2]/stand;
+	pi[2]=par[3]/stand;
+	pi[3]=1.0-pi[0]-pi[1]-pi[2];
+	child1 = treeArr[whichRoot][root].up[0];
+	child2 = treeArr[whichRoot][root].up[1];
+	templike_nc = malloc(numbase*(sizeof(double *)));
+	for (i=0; i<numbase; i++){
+		templike_nc[i]=malloc(4*(sizeof(double)));
+	}
+	if ((treeArr[whichRoot][child2].bl=treeArr[whichRoot][child2].bl+treeArr[whichRoot][child1].bl-MINBL)<MINBL){
+		treeArr[whichRoot][child2].bl=MINBL;
+	}
+	treeArr[whichRoot][child1].bl=MINBL;
+	getlike_gamma(par,whichRoot,numbase,root,numspec,seqArr); /*this is not necessary if the likelihood fucntion has already been called*/
+	maketransitionmatrixnc(0, treeArr[whichRoot][child2].bl+treeArr[whichRoot][child1].bl,whichRoot);
+	for (s=0; s<numbase; s++){
+		for (i=0; i<4; i++){
+			treeArr[whichRoot][root].posteriornc[s][i] = 1.0;/*tree[child1].likenc[s][i];*/
+			if (treeArr[whichRoot][child2].up[0]>-1){
+				treeArr[whichRoot][child1].posteriornc[s][i]=0.0;
+				for (j=0; j<4; j++){
+					treeArr[whichRoot][child1].posteriornc[s][i] += treeArr[whichRoot][child2].likenc[s][j]*PMATnc[0][i][j];
+				}
+			}else{
+				//treeArr[whichRoot][child1].posteriornc[s][i] = PMATnc[0][i][seqArr[whichRoot][child2-numspec+1][s]];
+				treeArr[whichRoot][child1].posteriornc[s][i] = PMATnc[0][i][seqArr[whichRoot][child2][s]];
+			}
+		}
+		if (s==0){
+			printf("node %d initialization: %lf %lf %lf %lf\n",root,treeArr[whichRoot][root].posteriornc[s][0],treeArr[whichRoot][root].posteriornc[s][1],treeArr[whichRoot][root].posteriornc[s][2],treeArr[whichRoot][root].posteriornc[s][3]);
+			printf("Initial child 1 like: %lf %lf %lf %lf\n",treeArr[whichRoot][child1].likenc[s][0],treeArr[whichRoot][child1].likenc[s][1],treeArr[whichRoot][child1].likenc[s][2],treeArr[whichRoot][child1].likenc[s][3]);
+		}
+	}
+	if (treeArr[whichRoot][child1].up[0]>-1){
+		recurse_estimatebranchlengths(treeArr[whichRoot][child1].up[0], pi, precision, whichRoot, numbase, seqArr, root, numspec);
+	}
+	if (treeArr[whichRoot][child1].up[1]>-1){
+		recurse_estimatebranchlengths(treeArr[whichRoot][child1].up[1], pi, precision, whichRoot, numbase, seqArr, root, numspec);
+	}
+	recurse_estimatebranchlengths(child2, pi, precision,whichRoot, numbase, seqArr, root, numspec);
+	for (i=0; i<numbase; i++){
+		free(templike_nc[i]);
+	}
+	free(templike_nc);
+	freeNRinits(1);
+}
+double maximizelikelihoodnc_globals(double parameters[10], int precision, int whichRoot, int numbase, int*** seqArr, int root, int numspec){
+	//optimization function starts counting at 1 so arrays have dimensionality n+1
+	int i;
+	double L, lowbound[10], upbound[10];
+	doNRinits(10);
+	for (i=1; i<10; i++){
+		lowbound[i]=0.05;
+		upbound[i]=20.0;
+	}
+	lowbound[9]=0.3;
+	L=findmax_Arr(parameters, lowbound, upbound, 9, getlike_gamma, precision, whichRoot, numbase, root, numspec, seqArr);
+	freeNRinits(10);
+	return L;
+}
+void print_branch_lengths(node** treeArr, int node, int whichRoot){
+	printf("NODE: %d BL: %lf\n",node,treeArr[whichRoot][node].bl);
+	if ( treeArr[whichRoot][node].up[0] != -1){
+		print_branch_lengths(treeArr,treeArr[whichRoot][node].up[0],whichRoot);
+		print_branch_lengths(treeArr,treeArr[whichRoot][node].up[1],whichRoot);
+	}
+}
+void estimatenucparameters(int whichRoot, int numbase, int root, int numspec, int*** seqArr){
+	double L;
+	COUNT=COUNT2=0;
+	clearGlobals();
+	//double precision[1];
+	//precision[0]=0;
+	//treeArr[whichRoot][root].bl = 0.00001;
+	//print_branch_lengths(treeArr,root,whichRoot);
+	printf("Initial likelihoodL value = %lf\n",-getlike_gamma(parameters,whichRoot,numbase,root,numspec,seqArr));
+	//print_branch_lengths(treeArr,root,whichRoot);
+	estimatebranchlengths(parameters,0, whichRoot, numbase, root, numspec,seqArr);
+	L=maximizelikelihoodnc_globals(parameters,0,whichRoot,numbase,seqArr,root,numspec);
+	//printf("Current ML value = %lf\n",L);
+	estimatebranchlengths(parameters,0, whichRoot, numbase, root, numspec,seqArr);
+	L=maximizelikelihoodnc_globals(parameters,0,whichRoot,numbase,seqArr,root,numspec);
+	//print_branch_lengths(treeArr,root,whichRoot);
+	//printf("Current ML value = %lf\n",L);
+	estimatebranchlengths(parameters,1, whichRoot, numbase, root, numspec,seqArr);
+	L=maximizelikelihoodnc_globals(parameters,0,whichRoot,numbase,seqArr,root,numspec);
+	//printf("Current ML value = %lf\n",L);
+	estimatebranchlengths(parameters,2, whichRoot, numbase, root, numspec,seqArr);
+	L=maximizelikelihoodnc_globals(parameters,2,whichRoot,numbase,seqArr,root,numspec);
+	//printf("Current ML value = %lf\n",L);
+	estimatebranchlengths(parameters,2, whichRoot, numbase, root, numspec,seqArr);
+	estimatebranchlengths(parameters,2, whichRoot, numbase, root, numspec,seqArr);
+	printf("Current ML value= %lf\n",-getlike_gamma(parameters,whichRoot,numbase,root,numspec,seqArr));
+}
+void makeposterior_nc(int node, int whichRoot, int numbase, int*** seqArr){
+	int i,j, s, parent, otherb, child1, child2, b;
+	double bl, max;
+	child1 = treeArr[whichRoot][node].up[0];
+	child2 = treeArr[whichRoot][node].up[1];
+	parent = treeArr[whichRoot][node].down;
+	bl = treeArr[whichRoot][node].bl;
+	maketransitionmatrixnc(0, bl,whichRoot);
+	if ((otherb = treeArr[whichRoot][parent].up[0])==node){
+		otherb = treeArr[whichRoot][parent].up[1];
+	}
+	maketransitionmatrixnc(1, treeArr[whichRoot][otherb].bl,whichRoot);
+	for (s=0; s<numbase; s++){
+		if (treeArr[whichRoot][otherb].up[0]>-1){
+			for (i=0; i<4; i++){
+				templike_nc[s][i]=0;
+				for (j=0; j<4; j++){
+					templike_nc[s][i] += treeArr[whichRoot][otherb].likenc[s][j]*PMATnc[1][i][j];
+				}
+				templike_nc[s][i]=templike_nc[s][i]*treeArr[whichRoot][parent].posteriornc[s][i];
+			}
+		}else{
+			b=seqArr[whichRoot][otherb][s];
+			for (i=0; i<4; i++){
+				templike_nc[s][i] = PMATnc[1][i][b]*treeArr[whichRoot][parent].posteriornc[s][i];
+			}
+		}
+		for (i=0; i<4; i++){
+			treeArr[whichRoot][node].posteriornc[s][i]=0.0;
+			max=0.0;
+			for (j=0; j<4; j++){
+				if ((treeArr[whichRoot][node].posteriornc[s][i] = treeArr[whichRoot][node].posteriornc[s][i] + PMATnc[0][i][j]*templike_nc[s][j])>max){
+					max=treeArr[whichRoot][node].posteriornc[s][i];//more underflow protection
+				}
+			}
+		}
+		for (i=0; i<4; i++){
+			treeArr[whichRoot][node].posteriornc[s][i]=treeArr[whichRoot][node].posteriornc[s][i]/max;
+		}
+	}
+		if (treeArr[whichRoot][child1].up[0]>-1){
+			makeposterior_nc(child1,whichRoot,numbase,seqArr);
+		}
+		if (treeArr[whichRoot][child2].up[0]>-1){
+			makeposterior_nc(child2,whichRoot,numbase,seqArr);
+		}
+}
+void getposterior_nc(int whichRoot, int numbase, int root, int numspec, int*** seqArr){
+	int i, j, s, k, parent, b, notdonebefore;
+	double p, sum, pi[4], stand, **templike;
+	getlike_gamma(parameters,whichRoot,numbase,root,numspec,seqArr); /*need to call likelihood again*/
+	templike_nc = malloc(numbase*(sizeof(double *)));
+	for (i=0; i<numbase; i++){
+		templike_nc[i]=malloc(4*(sizeof(double)));
+	}
+	stand = 1.0+parameters[1]+parameters[2]+parameters[3];
+	pi[0]=parameters[1]/stand;
+	pi[1]=parameters[2]/stand;
+	pi[2]=parameters[3]/stand;
+	pi[3]=1.0-pi[0]-pi[1]-pi[2];
+	for (s=0; s<numbase; s++){
+		for (i=0; i<4; i++){
+			treeArr[whichRoot][root].posteriornc[s][i] = 1.0;
+		}
+	}
+	if (treeArr[whichRoot][treeArr[whichRoot][root].up[0]].up[0]>-1){
+		makeposterior_nc(treeArr[whichRoot][root].up[0],whichRoot,numbase,seqArr);
+	}
+	if (treeArr[whichRoot][treeArr[whichRoot][root].up[1]].up[0]>-1){
+		makeposterior_nc(treeArr[whichRoot][root].up[1],whichRoot,numbase,seqArr);
+	}
+	for (j=0; j<2*numspec-1; j++){
+		if (treeArr[whichRoot][j].up[0]>-1){
+			for (s=0; s<numbase; s++) {
+				sum = 0.0;
+				for (i=0; i<4; i++){
+					sum = sum + (treeArr[whichRoot][j].posteriornc[s][i]=treeArr[whichRoot][j].likenc[s][i]*treeArr[whichRoot][j].posteriornc[s][i]*pi[i]);
+				}
+				for (i=0; i<4; i++){
+					treeArr[whichRoot][j].posteriornc[s][i] = treeArr[whichRoot][j].posteriornc[s][i]/sum;
+				}
+			}
+		}else{
+			for (s=0; s<numbase; s++) {
+				notdonebefore=1;
+				b=seqArr[whichRoot][j][s];
+				if (b==4){
+					if (notdonebefore==1) {
+						maketransitionmatrixnc(0, treeArr[whichRoot][j].bl,whichRoot);
+						notdonebefore=0;
+					}
+					parent=treeArr[whichRoot][j].down;
+					sum = 0.0;
+					for (i=0; i<4; i++){
+						treeArr[whichRoot][j].posteriornc[s][i]=0.0;
+						for (k=0; k<4; k++){
+							treeArr[whichRoot][j].posteriornc[s][i] += treeArr[whichRoot][parent].posteriornc[s][k]*PMATnc[0][i][k];
+						}
+						sum = sum + (treeArr[whichRoot][j].posteriornc[s][i]=treeArr[whichRoot][j].posteriornc[s][i]*pi[i]);
+					}
+					for (i=0; i<4; i++){
+						treeArr[whichRoot][j].posteriornc[s][i] = treeArr[whichRoot][j].posteriornc[s][i]/sum;
+					}
+				}else{
+					for (i=0; i<4; i++){
+						if (i==b){
+							treeArr[whichRoot][j].posteriornc[s][i]=1.0;
+						}else{
+							treeArr[whichRoot][j].posteriornc[s][i]=0.0;
+						}
+					}
+				}
+			}
+		}
+	}
+	for (i=0; i<numbase; i++){
+		free(templike_nc[i]);
+	}
+	free(templike_nc);
+
+}
+void initialize_assignment_mem(type_of_PP**** PP, int numberOfRoots,int* numspec, int* numbase){
+	int i, j, k;
+	PP = (type_of_PP ****)malloc(numberOfRoots*sizeof(type_of_PP ***));
+		for(i=0; i<numberOfRoots;i++){
+			PP[i] = (type_of_PP ***)malloc((2*numspec[i+1]-1)*sizeof(type_of_PP **));
+			for(j=0; j<2*numspec[i+1]-1; j++){
+				PP[i][j] = (type_of_PP **)malloc((numbase[j])*sizeof(type_of_PP *));
+				for(k=0; k<numbase[j];k++){
+					PP[i][j][k] = (type_of_PP *)malloc(4*(sizeof(type_of_PP)));
+				}
+			}
+		}
+}
+void store_PPs(type_of_PP**** PP, int numberOfRoots,int* numspec, int* numbase){
+	int i, j, k, l;
+	for(i=0; i<numberOfRoots; i++){
+		for (j=0; j<2*numspec[i+1]-1; j++){
+			for (k=0; k<numbase[i]; k++){
+				for (l=0; l<4; l++){
+					//if ( treeArr[i][j].posteriornc[k][l] == -1 ){
+					//	PP[i][j][k][l] = -1;
+					//}else{
+						PP[i][j][k][l] = (type_of_PP)(1.0-treeArr[i][j].posteriornc[k][l]);//This need to change if we change type for this variable
+					//}
+				}
+			}
+		}
+	}
+}
+void printRootSeqs(char** rootSeqs, type_of_PP**** PP, int numberOfRoots,int* numbase, int* rootArr){
+	type_of_PP minimum;
+	int index,i,j,k;
+	for(i=0; i<numberOfRoots;i++){
+		printf("NUMBASE: %d\n",numbase[i]);
+		for(j=0;j<numbase[i];j++){
+			minimum=PP[i][rootArr[i]][j][0];
+			index=0;
+			for(k=0;k<4;k++){
+				if (minimum > PP[i][rootArr[i]][j][k]){
+					minimum=PP[i][rootArr[i]][j][k];
+					index=k;
+				}
+				//if( PP[i][rootArr[i]][j][k] == -1){
+				//	index=-1;
+				//}
+			}
+			char base;
+			if (index==0){ base='A'; }
+			else if (index ==1 ){ base='C'; }
+			else if (index==2 ){ base='G'; }
+			else if (index==3 ){base='T'; }
+			rootSeqs[i][j]=base;
+		}
+		rootSeqs[i][numbase[i]]='\0';
+	}
+	for(i=0;i<numberOfRoots;i++){
+		printf("Root Sequence %d\t",i);
+		for(j=0;j<numbase[i];j++){
+			printf("%c",rootSeqs[i][j]);
+		}
+		printf("\n");
+	}
 }
 int main(int argc, char **argv){
 	Options opt;
@@ -1807,7 +2418,7 @@ int main(int argc, char **argv){
 			tree[i][j].nodeToCut=0;
 		}
 	}
-	int root = NJ(tree,distMat,kseqs,0);
+	int root = NJ(tree,distMat,kseqs,0,0);
 	get_number_descendants(tree,root,0);
 	assignDepth(tree,tree[0][root].up[0],tree[0][root].up[1],1);
 	//printtree(tree,0,opt.number_of_kseqs);
@@ -1821,7 +2432,8 @@ int main(int argc, char **argv){
 	//numberOfNodesToCut = findMaxClade(tree,kseqs);
 	for(i=0; i<2*kseqs-1; i++){
 		//if (tree[0][indexArray[i]].nd > 1 && numberOfNodesToCut < opt.number_of_clusters-1){
-		if ( numberOfNodesToCut < opt.number_of_clusters-1 && tree[0][indexArray[i]].nd > 1){
+		if ( numberOfNodesToCut < opt.number_of_clusters-1 && tree[0][indexArray[i]].nd > 10){
+		//if ( tree[0][indexArray[i]].bl > 0.03 && tree[0][indexArray[i]].nd > 1){
 			printf("cutting at node %d\n",indexArray[i]);
 			numberOfNodesToCut++;
 			//printdescendants(tree,indexArray[i],numberOfNodesToCut,0,kseqs);
@@ -1903,9 +2515,74 @@ int main(int argc, char **argv){
 	}
 	printf("largest cluster is %d\n",largestCluster);
 	printf("sum of clusters is %d\n",sum_kseq);
-	//node** treeArr;
-	//allocateMemForTreeArr(numBranchesToFind,clusterSize,treeArr);
+	treeArr = (node **)malloc((numberOfNodesToCut-1)*sizeof(node *));
+	for(i=0; i<numberOfNodesToCut-1; i++){
+		treeArr[i]=malloc((2*clusterSize[i+1]-1)*sizeof(node));
+		for(j=0; j<2*clusterSize[i+1]-1; j++){
+			treeArr[i][j].name = (char *)malloc(MAXNAME*sizeof(char));
+			strcpy(treeArr[i][j].name,"internal");
+			treeArr[i][j].likenc = malloc(fasta_specs[1]*sizeof(double *));
+			treeArr[i][j].posteriornc = malloc(fasta_specs[1]*sizeof(double *));
+			int n;
+			for(n=0; n<fasta_specs[1]; n++){
+				treeArr[i][j].likenc[n] = malloc(4*sizeof(double));
+				treeArr[i][j].posteriornc[n] = malloc(4*sizeof(double));
+			}
+		}
+	}
+	for(i=0; i<4; i++){
+		PMATnc[0][i][4]=1.0;
+		PMATnc[0][i][4]=1.0;
+	}
+	//allocateMemForTreeArr(numberOfNodesToCut-1,clusterSize,treeArr,kseqs);
+	for(i=0; i<clusterSize[numberOfNodesToCut-1]; i++){
+		for(j=0; j<fasta_specs[0]; j++){
+			if (strcmp(seqNames[j],clusters[numberOfNodesToCut-1][i])==0){
+				break;
+			}
+		}
+		strcpy(cluster_seqs[numberOfNodesToCut-1][i],sequences[j]);
+	}
+	int* rootArr = (int *)malloc(numberOfNodesToCut*sizeof(int));
+	createTreesForClusters(treeArr, numberOfNodesToCut,clusterSize,cluster_seqs,clusters,fasta_specs,rootArr);
+	char** kalign_args = (char **)malloc(2*sizeof(char *));
+	kalign_args[0] = (char*)malloc(100*sizeof(char));
+	kalign_args[1] = (char*)malloc(100*sizeof(char));
+	strcpy(kalign_args[0],"test_CO1.1000.fasta");
+	strcpy(kalign_args[1],"test_dbug/test_kalign_MSA.fasta");
+	int*** seqArr = (int ***)malloc(numberOfNodesToCut*sizeof(int **));
 	int k,l,m;
+	int *numbase = (int *)malloc((numberOfNodesToCut-1)*sizeof(int));
+	for(i=0; i<numberOfNodesToCut-1; i++){
+		seqArr[i] = (int **)malloc(clusterSize[i+1]*sizeof(int *));
+		for(j=0; j<clusterSize[i+1]; j++){
+			seqArr[i][j] = (int *)malloc(5000*sizeof(int));
+				for(k=0; k<5000; k++){
+					seqArr[i][j][k]='\0';
+				}
+		}
+		numbase[i] = 0;
+		main_kalign(1,kalign_args,clusterSize[i+1],clusters[i+1],cluster_seqs[i+1],seqArr,numbase,i);
+		estimatenucparameters(i,numbase[i],rootArr[i],clusterSize[i+1],seqArr);
+		getposterior_nc(i,numbase[i],rootArr[i],clusterSize[i+1],seqArr);
+	}
+	type_of_PP**** PP = (type_of_PP ****)malloc((numberOfNodesToCut-1)*sizeof(type_of_PP ***));
+	for(i=0; i<numberOfNodesToCut-1;i++){
+		PP[i] = (type_of_PP ***)malloc((2*clusterSize[i+1]-1)*sizeof(type_of_PP **));
+		for(j=0; j<2*clusterSize[i+1]-1; j++){
+			PP[i][j] = (type_of_PP **)malloc((numbase[i])*sizeof(type_of_PP *));
+			for(k=0; k<numbase[i];k++){
+				PP[i][j][k] = (type_of_PP *)malloc(4*(sizeof(type_of_PP)));
+			}
+		}
+	}
+	//initialize_assignment_mem(PP,numberOfNodesToCut-1,clusterSize,numbase);
+	store_PPs(PP,numberOfNodesToCut-1,clusterSize,numbase);
+	rootSeqs = (char **)malloc((numberOfNodesToCut-1)*(sizeof(char *)));
+	for(i=0; i<numberOfNodesToCut-1;i++){
+		rootSeqs[i]=(char *)malloc((numbase[i]+1)*(sizeof(char)));
+	}
+	printRootSeqs(rootSeqs,PP,numberOfNodesToCut-1,numbase,rootArr);
 	int count=0;
 	double averageDist;
 	//char*** seqsInClusterAvg = (char ***)malloc((opt.number_of_clusters-1)*sizeof(char **));
@@ -2007,6 +2684,32 @@ int main(int argc, char **argv){
 		free(cluster_seqs[i]);
 	}
 	free(cluster_seqs);
+	for(i=1; i< numberOfNodesToCut; i++){
+		double** distMatCluster = (double **)malloc((clusterSize[i]+1)*sizeof(double *));
+		for(j=0; j<clusterSize[i]+1; j++){
+			distMatCluster[j] = (double *)malloc((clusterSize[i]+1)*sizeof(double));
+		}
+		for(j=0; j<clusterSize[i]; j++){
+			for(k=0; k<clusterSize[i]; k++){
+				distMatCluster[j][k]=0;
+			}
+		}
+		char** cluster_sequences = (char **)malloc(clusterSize[i]*sizeof(char *));
+		for(j=0; j<clusterSize[i]; j++){
+			cluster_sequences[j] = (char *)malloc(fasta_specs[1]*sizeof(char));
+		}
+		int index=0;
+		for(j=0; j<fasta_specs[0]; j++){
+			for(k=0; k<clusterSize[i]; k++){
+				if ( strcmp(seqNames[j],clusters[i][k])==0 ){
+					strcpy(cluster_sequences[index],sequences[j]);
+					index++;
+				}
+			}
+		}
+		createDistMat(cluster_sequences,distMatCluster,clusterSize[i],fasta_specs);
+		root = NJ(tree,distMatCluster,clusterSize[i],i,i);
+	}
 	if ( opt.output_fasta==1 ){
 		printInitialClusters(starting_number_of_clusters,numberOfNodesToCut,clusterSize,opt,fasta_specs[0],taxMap,opt.hasTaxFile,seqNames,sequences);
 	}
