@@ -9,6 +9,7 @@
 #include "needleman_wunsch.h"
 #include "global.h"
 #include "hashmap.h"
+#include "WFA/affine_wavefront_align.h"
 
 //struct hashmap map;
 char*** clusters;
@@ -496,6 +497,92 @@ void allocateMemForTreeArr(int numberOfClusters, int* clusterSize, node** treeAr
 		}
 	}
 }
+void createDistMat_WFA(char** seqsInCluster, double** distMat, int clusterSize, int* fasta_specs){
+	int i,j;
+	affine_penalties_t affine_penalties = {
+		.match = 0,
+		.mismatch =4,
+		.gap_opening = 6,
+		.gap_extension = 2,
+	};
+	//char* seq1 = (char *)malloc(2*fasta_specs[1]*sizeof(char));
+	//char* seq2 = (char *)malloc(2*fasta_specs[1]*sizeof(char));
+	for (i=0; i<clusterSize; i++){
+		for (j=i+1; j<clusterSize; j++){
+			mm_allocator_t* const mm_allocator = mm_allocator_new(BUFFER_SIZE_8M);
+			char* seq1 = strdup(seqsInCluster[i]);
+			char* seq2 = strdup(seqsInCluster[j]);
+			affine_wavefronts_t* affine_wavefronts = affine_wavefronts_new_complete(strlen(seq1),strlen(seq2),&affine_penalties,NULL,mm_allocator);
+			affine_wavefronts_align(affine_wavefronts,seq1,strlen(seq1),seq2,strlen(seq2));
+			const int score = edit_cigar_score_gap_affine(&affine_wavefronts->edit_cigar,&affine_penalties);
+			//fprintf(stderr,"  PATTERN  %s\n",seq1);
+			//fprintf(stderr,"  TEXT     %s\n",seq2);
+			//fprintf(stderr,"  SCORE COMPUTED %d\t",score);
+			//edit_cigar_print_pretty(stderr,seq1,strlen(seq1),seq2,strlen(seq2),&affine_wavefronts->edit_cigar,mm_allocator);
+			char* const pattern_alg = mm_allocator_calloc(mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
+			char* const text_alg = mm_allocator_calloc(mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
+			int k, alg_pos =0, pattern_pos= 0, text_pos =0;
+			for (k=affine_wavefronts->edit_cigar.begin_offset;k<affine_wavefronts->edit_cigar.end_offset;++k) {
+				switch (affine_wavefronts->edit_cigar.operations[k]) {
+					case 'M':
+						if (seq1[pattern_pos] != seq2[text_pos]) {
+							pattern_alg[alg_pos] = seq1[pattern_pos];
+							text_alg[alg_pos++] = seq2[text_pos];
+						}else{
+							pattern_alg[alg_pos] = seq1[pattern_pos];
+							text_alg[alg_pos++] = seq2[text_pos];
+						}
+						pattern_pos++; text_pos++;
+						break;
+					case 'X':
+						if (seq1[pattern_pos] != seq2[text_pos]) {
+							pattern_alg[alg_pos] = seq1[pattern_pos++];
+							text_alg[alg_pos++] = seq2[text_pos++];
+						}else{
+							pattern_alg[alg_pos] = seq1[pattern_pos++];
+							text_alg[alg_pos++] = seq2[text_pos++];
+						}
+						break;
+					case 'I':
+						pattern_alg[alg_pos] = '-';
+						text_alg[alg_pos++] = seq2[text_pos++];
+						break;
+					case 'D':
+						pattern_alg[alg_pos] = seq1[pattern_pos++];
+						text_alg[alg_pos++] = '-';
+						break;
+					default:
+						break;
+				}
+			}
+			k=0;
+			while (pattern_pos < strlen(seq1)) {
+				pattern_alg[alg_pos+k] = seq1[pattern_pos++];
+				++k;
+			}
+			while (text_pos < strlen(seq2)) {
+				text_alg[alg_pos+k] = seq2[text_pos++];
+				++k;
+			}
+			int alignment_length = strlen(pattern_alg);
+			int** DATA = (int **)malloc(2*sizeof(int *));
+			for(k=0; k<2; k++){
+				DATA[k] = (int *)malloc(alignment_length*sizeof(int));
+			}
+			int* mult = (int *)malloc(alignment_length*sizeof(int));
+			alignment_length = populate_DATA(pattern_alg,text_alg,DATA,alignment_length,mult);
+			Get_dist_JC(alignment_length,distMat,DATA,mult,i,j);
+			free(mult);
+			free(DATA[0]);
+			free(DATA[1]);
+			free(DATA);
+			affine_wavefronts_delete(affine_wavefronts);
+			mm_allocator_delete(mm_allocator);
+			free(seq1);
+			free(seq2);
+		}
+	}
+}
 void createDistMat(char** seqsInCluster, double** distMat, int clusterSize, int* fasta_specs){
 	int i,j;
 	nw_aligner_t *nw;
@@ -553,6 +640,96 @@ void updateNumberOfDescendants(node** tree, int node, int descendants, int which
 	tree[whichTree][node].nd=tree[whichTree][node].nd-descendants;
 	updateNumberOfDescendants(tree,parent,descendants,whichTree);
 }
+void calculateAverageDist_WFA(char** seqsA, char** seqsB, int sizeA, int sizeB, int longestSeq, double** distMat, double* calculateAvg){
+	int i,j;
+	affine_penalties_t affine_penalties = {
+		.match = 0,
+		.mismatch =4,
+		.gap_opening = 6,
+		.gap_extension = 2,
+	};
+	for(i=0; i<sizeA; i++){
+		for(j=0; j<sizeB; j++){
+			mm_allocator_t* const mm_allocator = mm_allocator_new(BUFFER_SIZE_8M);
+			char* seq1 = strdup(seqsA[i]);
+			char* seq2 = strdup(seqsB[j]);
+			affine_wavefronts_t* affine_wavefronts = affine_wavefronts_new_complete(strlen(seq1),strlen(seq2),&affine_penalties,NULL,mm_allocator);
+			affine_wavefronts_align(affine_wavefronts,seq1,strlen(seq1),seq2,strlen(seq2));
+			//const int score = edit_cigar_score_gap_affine(&affine_wavefronts->edit_cigar,&affine_penalties);
+			char* const pattern_alg = mm_allocator_calloc(mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
+			char* const text_alg = mm_allocator_calloc(mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
+			int k, alg_pos =0, pattern_pos= 0, text_pos =0;
+			for (k=affine_wavefronts->edit_cigar.begin_offset;k<affine_wavefronts->edit_cigar.end_offset;++k) {
+				switch (affine_wavefronts->edit_cigar.operations[k]) {
+					case 'M':
+						if (seq1[pattern_pos] != seq2[text_pos]) {
+							pattern_alg[alg_pos] = seq1[pattern_pos];
+							text_alg[alg_pos++] = seq2[text_pos];
+						}else{
+							pattern_alg[alg_pos] = seq1[pattern_pos];
+							text_alg[alg_pos++] = seq2[text_pos];
+						}
+						pattern_pos++; text_pos++;
+						break;
+					case 'X':
+						if (seq1[pattern_pos] != seq2[text_pos]) {
+							pattern_alg[alg_pos] = seq1[pattern_pos++];
+							text_alg[alg_pos++] = seq2[text_pos++];
+						}else{
+							pattern_alg[alg_pos] = seq1[pattern_pos++];
+							text_alg[alg_pos++] = seq2[text_pos++];
+						}
+						break;
+					case 'I':
+						pattern_alg[alg_pos] = '-';
+						text_alg[alg_pos++] = seq2[text_pos++];
+						break;
+					case 'D':
+						pattern_alg[alg_pos] = seq1[pattern_pos++];
+						text_alg[alg_pos++] = '-';
+						break;
+					default:
+						break;
+				}
+			}
+			k=0;
+			while (pattern_pos < strlen(seq1)) {
+				pattern_alg[alg_pos+k] = seq1[pattern_pos++];
+				++k;
+			}
+			while (text_pos < strlen(seq2)) {
+				text_alg[alg_pos+k] = seq2[text_pos++];
+				++k;
+			}
+			int alignment_length = strlen(pattern_alg);
+			int** DATA = (int **)malloc(2*sizeof(int *));
+			for(k=0; k<2; k++){
+				DATA[k] = (int *)malloc(alignment_length*sizeof(int));
+			}
+			int* mult = (int *)malloc(alignment_length*sizeof(int));
+			alignment_length = populate_DATA(pattern_alg,text_alg,DATA,alignment_length,mult);
+			Get_dist_JC(alignment_length,distMat,DATA,mult,i,j);
+			free(mult);
+			free(DATA[0]);
+			free(DATA[1]);
+			free(DATA);
+			affine_wavefronts_delete(affine_wavefronts);
+			mm_allocator_delete(mm_allocator);
+			free(seq1);
+			free(seq2);
+		}
+	}
+	double totalDist=calculateAvg[0];
+	double numberOfPairs=calculateAvg[1];
+	for(i=0; i<sizeA; i++){
+		for(j=0; j<sizeB; j++){
+			totalDist = totalDist + distMat[i][j];
+			numberOfPairs++;
+		}
+	}
+	calculateAvg[0]=totalDist;
+	calculateAvg[1]=numberOfPairs;
+}
 void calculateAverageDist(char** seqsA, char** seqsB, int sizeA, int sizeB, int longestSeq, double** distMat, double* calculateAvg){
 	int i,j;
 	nw_aligner_t *nw;
@@ -608,6 +785,82 @@ void calculateAverageDist(char** seqsA, char** seqsB, int sizeA, int sizeB, int 
 	free(scoring);
 	alignment_free(aln);
 	needleman_wunsch_free(nw);
+}
+double findShortestDist_WFA(int index, char* seq, int clusterSize, int longestSeq, double** distMat, int** DATA, int* mult){
+	int i,j;
+	affine_penalties_t affine_penalties = {
+		.match = 0,
+		.mismatch =4,
+		.gap_opening = 6,
+		.gap_extension = 2,
+	};
+	for(i=0; i<clusterSize; i++){
+		mm_allocator_t* const mm_allocator = mm_allocator_new(BUFFER_SIZE_8M);
+		char* seq1 = strdup(rootSeqs[index]);
+		char* seq2 = strdup(seq);
+		affine_wavefronts_t* affine_wavefronts = affine_wavefronts_new_complete(strlen(seq1),strlen(seq2),&affine_penalties,NULL,mm_allocator);
+		affine_wavefronts_align(affine_wavefronts,seq1,strlen(seq1),seq2,strlen(seq2));
+		const int score = edit_cigar_score_gap_affine(&affine_wavefronts->edit_cigar,&affine_penalties);
+		char* const pattern_alg = mm_allocator_calloc(mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
+		char* const text_alg = mm_allocator_calloc(mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
+		int k, alg_pos =0, pattern_pos= 0, text_pos =0;
+		for (k=affine_wavefronts->edit_cigar.begin_offset;k<affine_wavefronts->edit_cigar.end_offset;++k) {
+			switch (affine_wavefronts->edit_cigar.operations[k]) {
+				case 'M':
+					if (seq1[pattern_pos] != seq2[text_pos]) {
+						pattern_alg[alg_pos] = seq1[pattern_pos];
+						text_alg[alg_pos++] = seq2[text_pos];
+					}else{
+						pattern_alg[alg_pos] = seq1[pattern_pos];
+						text_alg[alg_pos++] = seq2[text_pos];
+					}
+					pattern_pos++; text_pos++;
+					break;
+				case 'X':
+					if (seq1[pattern_pos] != seq2[text_pos]) {
+						pattern_alg[alg_pos] = seq1[pattern_pos++];
+						text_alg[alg_pos++] = seq2[text_pos++];
+					}else{
+						pattern_alg[alg_pos] = seq1[pattern_pos++];
+						text_alg[alg_pos++] = seq2[text_pos++];
+					}
+					break;
+				case 'I':
+					pattern_alg[alg_pos] = '-';
+					text_alg[alg_pos++] = seq2[text_pos++];
+					break;
+				case 'D':
+					pattern_alg[alg_pos] = seq1[pattern_pos++];
+					text_alg[alg_pos++] = '-';
+					break;
+				default:
+					break;
+			}
+		}
+		k=0;
+		while (pattern_pos < strlen(seq1)) {
+			pattern_alg[alg_pos+k] = seq1[pattern_pos++];
+			++k;
+		}
+		while (text_pos < strlen(seq2)) {
+			text_alg[alg_pos+k] = seq2[text_pos++];
+			++k;
+		}
+		int alignment_length = strlen(pattern_alg);
+		alignment_length = populate_DATA(pattern_alg,text_alg,DATA,alignment_length,mult);
+		Get_dist_JC(alignment_length,distMat,DATA,mult,i,0);
+		affine_wavefronts_delete(affine_wavefronts);
+		mm_allocator_delete(mm_allocator);
+		free(seq1);
+		free(seq2);
+	}
+	double shortestDist = 1;
+	for(i=0; i<clusterSize; i++){
+		if (shortestDist > distMat[i][0]){
+			shortestDist = distMat[i][0];
+		}
+	}
+	return shortestDist;
 }
 double findShortestDist(int index, char* seq, int clusterSize, int longestSeq, nw_alignment* nw_struct, double** distMat, int** DATA, int* mult){
 	int i,j;
@@ -1144,7 +1397,11 @@ void *runAssignToCluster(void *ptr){
 				//}
 				//pthread_mutex_lock(&lock);
 				//distance=findShortestDist(clusterSeqs[j],sequences[i],clusterSize[j],fasta_specs[3],nw_struct,distMat2,DATA,mult);
-				distance=findShortestDist(j-1,sequences[i],1,fasta_specs[3],nw_struct,distMat2,DATA,mult);
+				if (mstr->use_nw==0){
+					distance=findShortestDist_WFA(j-1,sequences[i],1,fasta_specs[3],distMat2,DATA,mult);
+				}else{
+					distance=findShortestDist(j-1,sequences[i],1,fasta_specs[3],nw_struct,distMat2,DATA,mult);
+				}
 				//pthread_mutex_unlock(&lock);
 				if (distance < shortest_distance){
 					shortest_distance = distance;
@@ -1645,7 +1902,11 @@ void createTreesForClusters(node** treeArr, int number_of_clusters, int* cluster
 			}
 		}
 		createDistMat(cluster_seqs[i],distMat,clusterSize[i],fasta_specs);
-		rootArr[i-1] = NJ(treeArr,distMat,clusterSize[i],i-1,i);
+		if ( clusterSize[i] > 3 ){
+			rootArr[i-1] = NJ(treeArr,distMat,clusterSize[i],i-1,i);
+		}else{
+			rootArr[i-1]=0;
+		}
 		for(j=0; j<clusterSize[i]+1; j++){
 			free(distMat[j]);
 		}
@@ -1747,7 +2008,7 @@ void makeconnc(int node, double lambda, int whichRoot, int numbase, int numspec,
 			for (i=0; i<4; i++){
 				treeArr[whichRoot][node].likenc[site][i] = PMATnc[0][i][seqArr[whichRoot][seqn][site]];
 			}
-			if (site==0 && node ==root) printf("node 10 (b=%i): %lf %lf %lf %lf\n",seqArr[whichRoot][seqn][site],PMATnc[0][0][seqArr[whichRoot][seqn][site]],PMATnc[0][1][seqArr[whichRoot][seqn][site]],PMATnc[0][2][seqArr[whichRoot][seqn][site]],PMATnc[0][3][seqArr[whichRoot][seqn][site]]);
+			//if (site==0 && node ==root) printf("node 10 (b=%i): %lf %lf %lf %lf\n",seqArr[whichRoot][seqn][site],PMATnc[0][0][seqArr[whichRoot][seqn][site]],PMATnc[0][1][seqArr[whichRoot][seqn][site]],PMATnc[0][2][seqArr[whichRoot][seqn][site]],PMATnc[0][3][seqArr[whichRoot][seqn][site]]);
 		}
 	}else{
 		makeconnc(child, lambda, whichRoot, numbase, numspec, seqArr, root);
@@ -1847,8 +2108,8 @@ double getlike_gamma(double par[],int whichRoot, int numbase, int root, int nums
 		free(locloglike[i]);
 	}
 	free(locloglike);
-	printf("LIKE: %lf\n",like - (double)numbase*log((double)NUMCAT));
-	printf("\n");
+	//printf("LIKE: %lf\n",like - (double)numbase*log((double)NUMCAT));
+	//printf("\n");
 	free(UFCnc);
 	return -like + (double)numbase*log((double)NUMCAT);
 }
@@ -1980,8 +2241,8 @@ void estimatebranchlengths(double par[10], int precision, int whichRoot, int num
 			}
 		}
 		if (s==0){
-			printf("node %d initialization: %lf %lf %lf %lf\n",root,treeArr[whichRoot][root].posteriornc[s][0],treeArr[whichRoot][root].posteriornc[s][1],treeArr[whichRoot][root].posteriornc[s][2],treeArr[whichRoot][root].posteriornc[s][3]);
-			printf("Initial child 1 like: %lf %lf %lf %lf\n",treeArr[whichRoot][child1].likenc[s][0],treeArr[whichRoot][child1].likenc[s][1],treeArr[whichRoot][child1].likenc[s][2],treeArr[whichRoot][child1].likenc[s][3]);
+			//printf("node %d initialization: %lf %lf %lf %lf\n",root,treeArr[whichRoot][root].posteriornc[s][0],treeArr[whichRoot][root].posteriornc[s][1],treeArr[whichRoot][root].posteriornc[s][2],treeArr[whichRoot][root].posteriornc[s][3]);
+			//printf("Initial child 1 like: %lf %lf %lf %lf\n",treeArr[whichRoot][child1].likenc[s][0],treeArr[whichRoot][child1].likenc[s][1],treeArr[whichRoot][child1].likenc[s][2],treeArr[whichRoot][child1].likenc[s][3]);
 		}
 	}
 	if (treeArr[whichRoot][child1].up[0]>-1){
@@ -2182,6 +2443,7 @@ void initialize_assignment_mem(type_of_PP**** PP, int numberOfRoots,int* numspec
 void store_PPs(type_of_PP**** PP, int numberOfRoots,int* numspec, int* numbase){
 	int i, j, k, l;
 	for(i=0; i<numberOfRoots; i++){
+		if ( numspec[i+1] > 3){
 		for (j=0; j<2*numspec[i+1]-1; j++){
 			for (k=0; k<numbase[i]; k++){
 				for (l=0; l<4; l++){
@@ -2193,13 +2455,15 @@ void store_PPs(type_of_PP**** PP, int numberOfRoots,int* numspec, int* numbase){
 				}
 			}
 		}
+		}
 	}
 }
-void printRootSeqs(char** rootSeqs, type_of_PP**** PP, int numberOfRoots,int* numbase, int* rootArr){
+void printRootSeqs(char** rootSeqs, type_of_PP**** PP, int numberOfRoots,int* numbase, int* rootArr, int *clusterSize, char*** cluster_seqs){
 	type_of_PP minimum;
 	int index,i,j,k;
 	for(i=0; i<numberOfRoots;i++){
 		printf("NUMBASE: %d\n",numbase[i]);
+		if ( clusterSize[i+1] > 3){
 		for(j=0;j<numbase[i];j++){
 			minimum=PP[i][rootArr[i]][j][0];
 			index=0;
@@ -2220,6 +2484,9 @@ void printRootSeqs(char** rootSeqs, type_of_PP**** PP, int numberOfRoots,int* nu
 			rootSeqs[i][j]=base;
 		}
 		rootSeqs[i][numbase[i]]='\0';
+		}else{
+			strcpy(rootSeqs[i],cluster_seqs[i+1][0]);
+		}
 	}
 	for(i=0;i<numberOfRoots;i++){
 		printf("Root Sequence %d\t",i);
@@ -2239,6 +2506,7 @@ int main(int argc, char **argv){
 	opt.hasTaxFile=0;
 	opt.output_fasta=0;
 	opt.clstr_format=1;
+	opt.use_nw=0;
 	strcpy(opt.output_directory,"");
 	memset(opt.output_file,'\0',2000);
 	parse_options(argc, argv, &opt);
@@ -2403,7 +2671,11 @@ int main(int argc, char **argv){
 	}
 	printf("Creating distance matrix...\n");
 	clock_gettime(CLOCK_MONOTONIC, &tstart);
-	createDistMat(seqsInCluster,distMat,kseqs,fasta_specs);
+	if ( opt.use_nw ==0 ){
+		createDistMat_WFA(seqsInCluster,distMat,kseqs,fasta_specs);
+	}else{
+		createDistMat(seqsInCluster,distMat,kseqs,fasta_specs);
+	}
 	clock_gettime(CLOCK_MONOTONIC, &tend);
 	printf("Took %lf seconds\n",((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec));
 	int* clusterSize = (int *)malloc(fasta_specs[3]*sizeof(int));
@@ -2562,9 +2834,13 @@ int main(int argc, char **argv){
 				}
 		}
 		numbase[i] = 0;
-		main_kalign(1,kalign_args,clusterSize[i+1],clusters[i+1],cluster_seqs[i+1],seqArr,numbase,i);
-		estimatenucparameters(i,numbase[i],rootArr[i],clusterSize[i+1],seqArr);
-		getposterior_nc(i,numbase[i],rootArr[i],clusterSize[i+1],seqArr);
+		if (clusterSize[i+1] > 3){
+			main_kalign(1,kalign_args,clusterSize[i+1],clusters[i+1],cluster_seqs[i+1],seqArr,numbase,i);
+			estimatenucparameters(i,numbase[i],rootArr[i],clusterSize[i+1],seqArr);
+			getposterior_nc(i,numbase[i],rootArr[i],clusterSize[i+1],seqArr);
+		}else{
+			numbase[i] = strlen(cluster_seqs[i+1][0]);
+		}
 	}
 	type_of_PP**** PP = (type_of_PP ****)malloc((numberOfNodesToCut-1)*sizeof(type_of_PP ***));
 	for(i=0; i<numberOfNodesToCut-1;i++){
@@ -2582,7 +2858,7 @@ int main(int argc, char **argv){
 	for(i=0; i<numberOfNodesToCut-1;i++){
 		rootSeqs[i]=(char *)malloc((numbase[i]+1)*(sizeof(char)));
 	}
-	printRootSeqs(rootSeqs,PP,numberOfNodesToCut-1,numbase,rootArr);
+	printRootSeqs(rootSeqs,PP,numberOfNodesToCut-1,numbase,rootArr,clusterSize,cluster_seqs);
 	int count=0;
 	double averageDist;
 	//char*** seqsInClusterAvg = (char ***)malloc((opt.number_of_clusters-1)*sizeof(char **));
@@ -2665,7 +2941,11 @@ int main(int argc, char **argv){
 			}
 		//for(j=0; j<clusterSize[i]; j++){
 			//for(k=0; k<clusterSize[i+1]; k++){
-			calculateAverageDist(seqsInClusterA,seqsInClusterB,clusterSize[i],clusterSize[j],2*fasta_specs[1],distMat,calculateAvg);
+			if ( opt.use_nw==0 ){
+				calculateAverageDist_WFA(seqsInClusterA,seqsInClusterB,clusterSize[i],clusterSize[j],2*fasta_specs[1],distMat,calculateAvg);
+			}else{
+				calculateAverageDist(seqsInClusterA,seqsInClusterB,clusterSize[i],clusterSize[j],2*fasta_specs[1],distMat,calculateAvg);
+			}
 			//}
 		//}
 			averageDistances[count]=calculateAvg[0]/calculateAvg[1];
@@ -2707,8 +2987,8 @@ int main(int argc, char **argv){
 				}
 			}
 		}
-		createDistMat(cluster_sequences,distMatCluster,clusterSize[i],fasta_specs);
-		root = NJ(tree,distMatCluster,clusterSize[i],i,i);
+		//createDistMat(cluster_sequences,distMatCluster,clusterSize[i],fasta_specs);
+		//root = NJ(tree,distMatCluster,clusterSize[i],i,i);
 	}
 	if ( opt.output_fasta==1 ){
 		printInitialClusters(starting_number_of_clusters,numberOfNodesToCut,clusterSize,opt,fasta_specs[0],taxMap,opt.hasTaxFile,seqNames,sequences);
@@ -2882,6 +3162,7 @@ int main(int argc, char **argv){
 			mstr[i].end=end;
 			mstr[i].largest_cluster=largest_cluster;
 			mstr[i].threadnumber=i;
+			mstr[i].use_nw = opt.use_nw;
 			mstr[i].seqNames = (char **)malloc((end-start)*sizeof(char *));
 			mstr[i].sequences = (char **)malloc((end-start)*sizeof(char *));
 			mstr[i].taxonomy = (char **)malloc((end-start)*sizeof(char *));

@@ -50,6 +50,7 @@ typedef struct Options{
 	int hasTaxFile;
 	int clstr_format;
 	int output_fasta;
+	int use_nw;
 }Options;
 
 typedef struct nw_alignment{
@@ -94,6 +95,7 @@ typedef struct mystruct{
 	resultsStruct *str;
 	int numAssigned;
 	char buffer[9999];
+	int use_nw;
 }mystruct;
 
 typedef struct msa{
