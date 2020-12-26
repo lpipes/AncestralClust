@@ -70,6 +70,7 @@ typedef struct resultsStruct{
 	int* clusterNumber;
 	double average;
 	int* savedForNewClusters;
+	int numunassigned;
 	int number_of_clusters;
 	int* clusterSizes;
 	char buffer[99999];

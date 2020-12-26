@@ -676,8 +676,8 @@ void createDistMat_WFA(char** seqsInCluster, double** distMat, int clusterSize, 
 	int l=0;
 	int m=1;
 	for(k=0; k<threads; k++){
-		dstr[k].starti = l;
-		dstr[k].endi = l + divide;
+		dstr[k].starti = 0;
+		dstr[k].endi = clusterSize;
 		if( k==threads-1){
 			dstr[k].endi = clusterSize;
 		}
@@ -1503,15 +1503,18 @@ void freeSeqsInClusterAvg(char*** seqsInClusterAvg, int number_of_kseqs, int num
 	}
 	free(seqsInClusterAvg);
 }
-void freeClusters(int kseqs){
+void freeClusters(int num_clusters, int kseqs, char*** cluster_seqs){
 	int i,j;
-	for(i=0; i<kseqs; i++){
+	for(i=0; i<num_clusters; i++){
 		for(j=0; j<kseqs; j++){
 			free(clusters[i][j]);
+			free(cluster_seqs[i][j]);
 		}
 		free(clusters[i]);
+		free(cluster_seqs[i]);
 	}
 	free(clusters);
+	free(cluster_seqs[i]);
 }
 void freeSequences(int number_of_seqs, char** taxonomy){
 	int i;
@@ -1818,6 +1821,7 @@ void *runAssignToCluster(void *ptr){
 				numAssigned++;*/
 				//}
 				saveForLater(i,results,sizeOfChunk,mstr->iteration,mstr->chooseK,fasta_specs,number_of_kseqs,mstr->skipped);
+				results->numunassigned++;
 			}else{
 				//for(j=sizeOfChunk-1; j>=0; j--){
 				//	if(results->assigned[j][0]=='\0'){
@@ -3332,9 +3336,20 @@ int main(int argc, char **argv){
 	}
 	for(i=0; i<kseqs+1; i++){
 		for(j=0; j<kseqs+1; j++){
+			if ( distMat[i][j] == 0 && i != j){
+				distMatForAVG[i][j] = distMat[j][i];
+			}else{
 			distMatForAVG[i][j] = distMat[i][j];
+			}
 		}
 	}
+	//for(i=0; i<300; i++){
+	//	for(j=0; j<300; j++){
+	//		if (distMat[i][j]==0 && i !=j){
+	//			printf("distMat[%d][%d]=0\n",i,j);
+	//		}
+	//	}
+	//}
 	clock_gettime(CLOCK_MONOTONIC, &tend);
 	printf("Took %lf seconds\n",((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec));
 	int* clusterSize = (int *)malloc(fasta_specs[3]*sizeof(int));
@@ -3961,6 +3976,7 @@ int main(int argc, char **argv){
 				mstr[i].str->savedForNewClusters[k] = -1;
 			       	mstr[i].str->clusterNumber[k] = -1;
 				mstr[i].str->index[k]=-1;
+				mstr[i].str->numunassigned=0;
 				//memset(mstr[i].str->accession[k],'\0',fasta_specs[2]+1);
 				//memset(mstr[i].str->savedForNewClusters[k],'\0',fasta_specs[2]+1);
 				//strcpy(mstr[i].seqNames[k],seqNames[j+k]);
@@ -4026,7 +4042,7 @@ int main(int argc, char **argv){
 			if (opt.clstr_format==1){
 				saveCLSTR(starting_number_of_clusters,fasta_specs[0],mstr[i],mstr[i].numAssigned,clstr,clstr_lengths,fasta_specs[1],numberToAssign,fasta_specs);
 			}
-			for( l=0; l<(mstr[i].end-mstr[i].start); l++){
+			for( l=0; l<mstr[i].str->numunassigned; l++){
 				if (mstr[i].str->savedForNewClusters[l]==-1){ break; }
 				int place=-1;
 				for( j=fasta_specs[0]-kseqs-1; j>=0; j--){
@@ -4224,7 +4240,7 @@ int main(int argc, char **argv){
 	printCLSTR(opt,clstr,clstr_lengths,fasta_specs[0],starting_number_of_clusters);
 	//freeMemForAlign(DATA,fasta_specs[1],mult);
 	//freeMemForDistMat(clusterSize,largest_cluster,distMat2);
-	freeClusters(fasta_specs[3]);
+	freeClusters(fasta_specs[3],kseqs,cluster_seqs);
 	freeSequences(fasta_specs[0],taxonomy);
 	free(fasta_specs);
 	free(chooseK);
