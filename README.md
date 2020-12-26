@@ -13,4 +13,5 @@ NJclust [OPTIONS]
 	-o, --output_file		output file
 	-f, --fasta_format		output fasta files for each cluster
 	-u, --use_nw			use Needleman-Wunsch (default is WFA)
+	-l, --number_of_lines_to_read	number of lines to read in from file
 	
