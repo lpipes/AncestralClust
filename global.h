@@ -3,6 +3,7 @@
  */
 #include "needleman_wunsch.h"
 #include "hashmap.h"
+//#include "WFA/gap_affine/affine_wavefront.h"
 #ifndef _GLOBAL_
 #define _GLOBAL_
 
@@ -29,9 +30,11 @@ typedef struct node{
 	char* name;
 	int nodeToCut;
 	int depth;
+	double distanceFromRoot;
 	double distance;
 	double** likenc;
 	double** posteriornc;
+	int clusterNumber;
 }node;
 
 typedef struct Options{
@@ -62,10 +65,11 @@ typedef struct nw_alignment{
 typedef struct resultsStruct{
 	char** accession;
 	//char** assigned;
+	int *index;
 	int numassigned;
 	int* clusterNumber;
 	double average;
-	char** savedForNewClusters;
+	int* savedForNewClusters;
 	int number_of_clusters;
 	int* clusterSizes;
 	char buffer[99999];
@@ -96,9 +100,45 @@ typedef struct mystruct{
 	int numAssigned;
 	char buffer[9999];
 	int use_nw;
+	int *skipped;
+	int iteration;
 }mystruct;
 
-typedef struct msa{
+typedef struct distStruct{
+	int starti;
+	int startj;
+	int endi;
+	int endj;	
+	char** seq;
+	//affine_wavefronts_t* affine_wavefronts;
+	//char* const pattern_alg;
+	//char* const text_alg;
+	//mm_allocator_t* const mm_allocator;
+}distStruct;
+
+typedef struct distStruct_Avg{
+	int starti;
+	int startj;
+	int endi;
+	int endj;
+	char*** seq;
+	int indexA;
+	int indexB;
+	int indexA_start;
+	int indexA_end;
+	int indexB_start;
+	int indexB_end;
+	double result;
+	int thread;
+	int* clusterSize;
+	//resultsStruct *str;
+}distStruct_Avg;
+
+//typedef struct resultsStruct{
+//	double average;
+//}resultsStruct;
+
+/*typedef struct msa{
 	struct msa_seq** sequences;
 	int** sip;
 	int* nsip;
@@ -118,7 +158,12 @@ typedef struct msa_seq{
 	int* gaps;
 	int len;
 	int alloc_len;
-}msa_seq;
+}msa_seq;*/
+typedef struct readsToAssign{
+	char **sequence;
+	char **name;
+	char **taxonomy;
+}readsToAssign;
 
 extern char*** clusters;
 extern struct hashmap map;
@@ -131,4 +176,5 @@ extern double *statevector, *UFCnc, *localpi, **templike_nc;
 extern double Logfactorial[MAXNUMBEROFINDINSPECIES];
 extern double parameters[10];
 extern node** treeArr;
+extern readsToAssign* readsStruct;
 #endif

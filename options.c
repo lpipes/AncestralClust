@@ -27,6 +27,7 @@ char usage[] = "\nNJclust [OPTIONS]\n\
 	-o, --output_file		output file\n\
 	-f, --fasta_format		output fasta files for each cluster\n\
 	-u, --use_nw			use Needleman-Wunsch (default is WFA)\n\
+	-l, --number_of_lines_to_read	number of lines to read in from file\n\
 	\n";
 
 void print_help_statement(){
@@ -42,7 +43,7 @@ void parse_options(int argc, char **argv, Options *opt){
 		exit(0);
 	}
 	while(1){
-		c=getopt_long(argc,argv,"hfun:k:d:i:t:c:o:",long_options, &option_index);
+		c=getopt_long(argc,argv,"hfun:k:d:i:t:c:o:l:",long_options, &option_index);
 		if (c==-1) break;
 		switch(c){
 			case 'h':
@@ -59,6 +60,11 @@ void parse_options(int argc, char **argv, Options *opt){
 				break;
 			case 'u':
 				opt->use_nw=1;
+				break;
+			case 'l':
+				success = sscanf(optarg, "%d", &(opt->numberOfLinesToRead));
+				if (!success)
+					fprintf(stderr, "Could not read number of lines to read\n");
 				break;
 			case 't':
 				success = sscanf(optarg, "%s", opt->taxonomy);

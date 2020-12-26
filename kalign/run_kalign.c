@@ -174,7 +174,8 @@ int print_AVX_warning(void)
 }
 
 
-int main_kalign(int argc, char *argv[], int number_of_seqs, char** names_of_sequences, char** sequences_in_cluster, int*** seqArr, int* numbase, int whichRoot)
+//int main_kalign(int argc, char *argv[], int number_of_seqs, char** names_of_sequences, char** sequences_in_cluster, int*** seqArr, int* numbase, int whichRoot)
+int main_kalign(int number_of_seqs, char** names_of_sequences, char** sequences_in_cluster, int*** seqArr, int* numbase, int whichRoot, int num_threads)
 {
         int version = 0;
         int c;
@@ -295,10 +296,9 @@ int main_kalign(int argc, char *argv[], int number_of_seqs, char** names_of_sequ
                         abort ();
                 }
         }*/
-	param->nthreads = 1;
-	param->outfile = argv[1];
-	in = argv[0];
-	param->num_infiles = 1;
+	param->nthreads = num_threads;
+	//param->outfile = argv[1];
+	//in = argv[0];
 
         if(version){
                 fprintf(stdout,"%s %s\n",PACKAGE_NAME, PACKAGE_VERSION);
@@ -320,7 +320,7 @@ int main_kalign(int argc, char *argv[], int number_of_seqs, char** names_of_sequ
                 return EXIT_SUCCESS;
         }
 
-        if(param->help_flag){
+        /*if(param->help_flag){
                 RUN(print_kalign_help(argv));
                 free_parameters(param);
                 return EXIT_SUCCESS;
@@ -330,7 +330,7 @@ int main_kalign(int argc, char *argv[], int number_of_seqs, char** names_of_sequ
                 LOG_MSG("Number of threads has to be >= 1.");
                 free_parameters(param);
                 return EXIT_FAILURE;
-        }
+        }*/
 
         param->num_infiles = 0;
 
@@ -338,7 +338,7 @@ int main_kalign(int argc, char *argv[], int number_of_seqs, char** names_of_sequ
         /* I fixed this by attempting to read and checking for valid
            sequences */
 
-        if (!isatty(fileno(stdin))){
+        /*if (!isatty(fileno(stdin))){
                 param->num_infiles++;
         }
 
@@ -348,18 +348,19 @@ int main_kalign(int argc, char *argv[], int number_of_seqs, char** names_of_sequ
 
         if (optind < argc){
                 param->num_infiles += argc-optind;
-        }
+        }*/
 
-        if(param->num_infiles == 0){
+	param->num_infiles = 1;
+        /*if(param->num_infiles == 0){
                 RUN(print_kalign_help(argv));
                 LOG_MSG("No input files");
                 free_parameters(param);
                 return EXIT_SUCCESS;
-        }
+        }*/
         //fprintf(stdout,"%d fgiles\n",param->num_infiles);
         MMALLOC(param->infile, sizeof(char*) * param->num_infiles);
 
-        c = 0;
+        /*c = 0;
         if (!isatty(fileno(stdin))){
                 param->infile[c] = NULL;
                 c++;
@@ -375,7 +376,7 @@ int main_kalign(int argc, char *argv[], int number_of_seqs, char** names_of_sequ
                         param->infile[c] =  argv[optind++];
                         c++;
                 }
-        }
+        }*/
 
         /* Just for internal development & testing */
         if(devtest){
@@ -441,7 +442,7 @@ int main_kalign(int argc, char *argv[], int number_of_seqs, char** names_of_sequ
                         ERROR_MSG("Param chaos bigger than 10 (currently %d)",param->chaos);
                 }
         }
-	param->infile[0] = argv[0];
+	//param->infile[0] = argv[0];
         
 	RUN(run_kalign(param,number_of_seqs,names_of_sequences,sequences_in_cluster,seqArr,numbase,whichRoot));
 
@@ -485,14 +486,15 @@ int run_kalign(struct parameters* param, int number_of_seqs, char** names_of_seq
                 }
         }
         /* check if we have sequences  */
-        RUN(check_for_sequences(msa));
+        //RUN(check_for_sequences(msa));
 
         /* extra checks for input alignments */
-        if(param->clean){
+        /*if(param->clean){
                 RUN(run_extra_checks_on_msa(msa));
-        }
+        }*/
 
-        LOG_MSG("Detected: %d sequences.", msa->numseq);
+        //LOG_MSG("Detected: %d sequences.", msa->numseq);
+        LOG_MSG("Detected: %d sequences.", number_of_seqs);
         /* If we just want to reformat end here */
         if(param->reformat){
                 //LOG_MSG("%s reformat",param->reformat);
@@ -520,12 +522,12 @@ int run_kalign(struct parameters* param, int number_of_seqs, char** names_of_seq
                 return OK;
         }
 
-        if(msa->aligned != ALN_STATUS_UNALIGNED){
+        /*if(msa->aligned != ALN_STATUS_UNALIGNED){
                 RUN(dealign_msa(msa));
-        }
+        }*/
 
         /* allocate aln parameters  */
-        RUN(init_ap(&ap,param,msa->numseq,msa->L ));
+        RUN(init_ap(&ap,param,number_of_seqs,msa->L ));
 
         if(param->dump_internal){
                 double* s;
@@ -541,7 +543,7 @@ int run_kalign(struct parameters* param, int number_of_seqs, char** names_of_seq
         }
 
         /* Allocate tasks  */
-        RUN(alloc_tasks(&tasks, msa->numseq));
+        RUN(alloc_tasks(&tasks, number_of_seqs));
 
         /* Start bi-secting K-means sequence clustering */
         if(!param->chaos){

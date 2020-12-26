@@ -185,11 +185,11 @@ int read_input(char* infile,struct msa** msa, int number_of_seqs, char** names_o
         int i,j;
         //ASSERT(infile != NULL,"No input file");
         /* sanity checks  */
-        if(infile){
+        /*if(infile){
                 if(!my_file_exists(infile)){
                         ERROR_MSG("File: %s does not exist.",infile);
                 }
-        }
+        }*/
 
 
         DECLARE_TIMER(timer);
@@ -198,26 +198,26 @@ int read_input(char* infile,struct msa** msa, int number_of_seqs, char** names_o
 
         /* read everything into a in_buffer  */
 
-        RUN(read_file_stdin(&b,infile));
+        /*RUN(read_file_stdin(&b,infile));*/
 
         /* Check if any input was read */
         /* Logic: sum length of lines 1.. up to 5 */
         //LOG_MSG("%s lines: %d", infile, b->n_lines);
         j = 0;
-        for(i = 0; i < MACRO_MIN(1, b->n_lines);i++){
-                j += b->l[i]->len -1; /* exclude '0' at the end of strings  */
+        /*for(i = 0; i < MACRO_MIN(1, b->n_lines);i++){
+                j += b->l[i]->len -1; *//* exclude '0' at the end of strings  *//*
                 //fprintf(stdout,"%d %s\n", i, b->l[i]->line);
-        }
+        //}*/
         //LOG_MSG("Len: %d",j);
-        if(j == 0){
+        /*if(j == 0){
                 DESTROY_TIMER(timer);
                 free_in_buffer(b);
                 *msa = NULL;
                 return OK;
-        }
+        }*/
 
-        RUN(detect_alignment_format(b, &type));
-
+        //RUN(detect_alignment_format(b, &type));
+	type = FORMAT_FA;
         /* LOG_MSG("FORMAT: %d", type); */
         if(type == FORMAT_FA){
                 //RUNP(msa = read_msf(infile,msa));
@@ -691,11 +691,11 @@ int write_msa_fasta(struct msa* msa,char* outfile, int*** seqArr, int* numbase, 
         FILE* f_ptr = NULL;
         int i,j,c,f;
 
-        if(!outfile){
+        /*if(!outfile){
                 f_ptr = stdout;
         }else{
                 RUNP(f_ptr = fopen(outfile, "w"));
-        }
+        }*/
 	int gap = 0;
 	for(i=0; i<msa->numseq; i++){
 		f=0;
@@ -732,7 +732,7 @@ int write_msa_fasta(struct msa* msa,char* outfile, int*** seqArr, int* numbase, 
 			//strcat(seqArr[i],"-");
 		}
 	}
-        for(i = 0; i < msa->numseq;i++){
+        /*for(i = 0; i < msa->numseq;i++){
                 fprintf(f_ptr,">%s\n", msa->sequences[i]->name);
                 f = 0;
                 for(j = 0;j < msa->sequences[i]->len;j++){
@@ -766,7 +766,7 @@ int write_msa_fasta(struct msa* msa,char* outfile, int*** seqArr, int* numbase, 
         }
         if(outfile){
                 fclose(f_ptr);
-        }
+        }*/
 
         return OK;
 ERROR:
