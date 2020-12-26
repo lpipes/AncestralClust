@@ -10,7 +10,7 @@
 #include "needleman_wunsch.h"
 #include "global.h"
 #include "hashmap.h"
-#include "WFA/affine_wavefront_align.h"
+#include "WFA/gap_affine/affine_wavefront_align.h"
 
 //struct hashmap map;
 char*** clusters;
@@ -1514,7 +1514,7 @@ void freeClusters(int num_clusters, int kseqs, char*** cluster_seqs){
 		free(cluster_seqs[i]);
 	}
 	free(clusters);
-	free(cluster_seqs[i]);
+	free(cluster_seqs);
 }
 void freeSequences(int number_of_seqs, char** taxonomy){
 	int i;
@@ -2861,7 +2861,7 @@ void printRootSeqs(char** rootSeqs, type_of_PP**** PP, int numberOfRoots,int* nu
 	int index,i,j,k;
 	for(i=0; i<numberOfRoots;i++){
 		printf("NUMBASE: %d\n",numbase[i]);
-		if ( clusterSize[i+1] > 1){
+		if ( clusterSize[i+1] > 3){
 		for(j=0;j<numbase[i];j++){
 			minimum=PP[i][rootArr[i]][j][0];
 			index=0;
