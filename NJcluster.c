@@ -10,7 +10,7 @@
 #include "needleman_wunsch.h"
 #include "global.h"
 #include "hashmap.h"
-#include "WFA/gap_affine/affine_wavefront_align.h"
+#include "WFA/affine_wavefront_align.h"
 
 //struct hashmap map;
 char*** clusters;
