@@ -4,12 +4,12 @@ AncestralClust
 AncestralClust was developed to cluster divergent sequences. A neighbor-joining phylogenetic tree is built from a random number of user-specified initial sequences, the tree is split into initial clusters based on the longest branch lengths, each initial cluster is aligned with a multiple sequence alignment and the ancestral sequence from each cluster is inferred. The rest of the sequences are assigned to the clusters based on their closest genetic distance to the ancestral sequence (or saved for a future iteration if the distance is greater than the average distance between clusters). The process reiterates until all sequences are assigned to a cluster.
 
 <img src="https://raw.githubusercontent.com/lpipes/AncestralClust/master/cluster_ancestral.png?token=ABHEUH4TJ3SRH2HXUOMPOVC776CPE">
-![Overview](https://github.com/lpipes/AncestralClust/master/cluster_ancestral.png?raw=true)
+
 ancestralclust [OPTIONS]
 	
 	-h, --help			usage: -i file.fasta -t file_taxonomy.txt -d output_directory
-	-i, --infile			fasta to cluster
-	-t, --infile_taxonomy		taxonomy of fasta to cluster (sorted)
+	-i, --infile [REQUIRED]		fasta to cluster
+	-t, --infile_taxonomy		taxonomy of fasta to cluster (sorted in same order as fasta)
 	-n, --number_of_clusters	number of initial clusters
 	-k, --number_of_sequences	number of sequences in initial cluster
 	-d, --directory			directory to print clusters
