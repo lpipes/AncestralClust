@@ -98,7 +98,7 @@ int build_tree_kmeans(struct msa* msa, struct aln_param* ap,struct aln_tasks** t
 
         DECLARE_TIMER(timer);
         /* pick anchors . */
-        LOG_MSG("Calculating pairwise distances");
+        //LOG_MSG("Calculating pairwise distances");
         START_TIMER(timer);
         RUNP(anchors = pick_anchor(msa, &num_anchors));
 
@@ -114,11 +114,11 @@ int build_tree_kmeans(struct msa* msa, struct aln_param* ap,struct aln_tasks** t
         for(i = 0; i < numseq;i++){
                 samples[i] = i;
         }
-        LOG_MSG("%d anchors ", num_anchors);
+        //LOG_MSG("%d anchors ", num_anchors);
         //RUNP(root = alloc_node());
 
         START_TIMER(timer);
-        LOG_MSG("Building guide tree.");
+        //LOG_MSG("Building guide tree.");
 
         if(ap->nthreads == 1){
                 root = bisecting_kmeans_serial(msa,root, dm, samples, numseq, num_anchors, numseq);

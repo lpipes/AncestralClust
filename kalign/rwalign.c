@@ -430,7 +430,7 @@ int detect_alphabet(struct msa* msa)
                 msa->L = ALPHA_UNKNOWN;
         }else{
                 if(dna_prob > prot_prob){
-                        LOG_MSG("Detected DNA sequences.");
+                        //LOG_MSG("Detected DNA sequences.");
                         msa->L = ALPHA_defDNA;
                         RUN(convert_msa_to_internal(msa, ALPHA_defDNA));
                 }else if(prot_prob > dna_prob){

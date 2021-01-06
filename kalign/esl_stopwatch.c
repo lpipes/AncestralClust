@@ -226,10 +226,10 @@ int tl_stopwatch_Display(ESL_STOPWATCH *w)
         format_time_string(buf, w->user+w->sys, TRUE);
         format_time_string(buf2, w->elapsed, TRUE);
 #ifdef HAVE_TIMES
-        LOG_MSG("CPU Time: %.2fu %.2fs %s Elapsed: %s", w->user, w->sys, buf,buf2);
+        //LOG_MSG("CPU Time: %.2fu %.2fs %s Elapsed: %s", w->user, w->sys, buf,buf2);
 
 #else
-        LOG_MSG("CPU Time: %.2fu %s Elapsed: %s", w->user,  buf,buf2);
+        //LOG_MSG("CPU Time: %.2fu %s Elapsed: %s", w->user,  buf,buf2);
 #endif
         return OK;
 }

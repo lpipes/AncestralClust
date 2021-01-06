@@ -306,9 +306,9 @@ int main_kalign(int number_of_seqs, char** names_of_sequences, char** sequences_
                 return EXIT_SUCCESS;
         }
 
-        if(!param->dump_internal){
-                print_kalign_header();
-        }
+        //if(!param->dump_internal){
+        //        print_kalign_header();
+        //}
 
 #ifndef HAVE_AVX2
         RUN(print_AVX_warning());
@@ -494,7 +494,7 @@ int run_kalign(struct parameters* param, int number_of_seqs, char** names_of_seq
         }*/
 
         //LOG_MSG("Detected: %d sequences.", msa->numseq);
-        LOG_MSG("Detected: %d sequences.", number_of_seqs);
+        //LOG_MSG("Detected: %d sequences.", number_of_seqs);
         /* If we just want to reformat end here */
         if(param->reformat){
                 //LOG_MSG("%s reformat",param->reformat);
@@ -566,7 +566,7 @@ int run_kalign(struct parameters* param, int number_of_seqs, char** names_of_seq
 
         /* Start alignment stuff */
         DECLARE_TIMER(t1);
-        LOG_MSG("Aligning");
+        //LOG_MSG("Aligning");
         START_TIMER(t1);
 
         /* testing  */
