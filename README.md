@@ -14,4 +14,5 @@ ancestralclust [OPTIONS]
 	-f, --fasta_format		output fasta files for each cluster
 	-u, --use_nw			use Needleman-Wunsch (default is WFA)
 	-l, --number_of_lines_to_read	number of lines to read in from file
-	
+
+AncestralClust uses kalign3 to construct multiple sequence alignments, wavefront alignment algorithm for pairwise alignments, and needleman-wunsch alignment for pairwise alignments if chosen by the user.	
