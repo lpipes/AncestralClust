@@ -15,7 +15,7 @@ static struct option long_options[]=
 	{0,0,0,0}
 };
 
-char usage[] = "\nNJclust [OPTIONS]\n\
+char usage[] = "\nancestralclust [OPTIONS]\n\
 	\n\
 	-h, --help			usage: -i file.fasta -t file_taxonomy.txt -d output_directory\n\
 	-i, --infile			fasta to cluster\n\

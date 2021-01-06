@@ -1,7 +1,7 @@
-# NJcluster
-NJcluster
+# AncestralClust
+AncestralClust
 
-NJclust [OPTIONS]
+ancestralclust [OPTIONS]
 	
 	-h, --help			usage: -i file.fasta -t file_taxonomy.txt -d output_directory
 	-i, --infile			fasta to cluster
