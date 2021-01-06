@@ -17,4 +17,8 @@ ancestralclust [OPTIONS]
 	-u, --use_nw			use Needleman-Wunsch (default is WFA)
 	-l, --number_of_lines_to_read	number of lines to read in from file
 
-AncestralClust uses <a href="https://github.com/TimoLassmann/kalign">kalign3</a> to construct multiple sequence alignments, <a href="https://github.com/smarco/WFA">wavefront alignment algorithm</a> for pairwise alignments, and <a href="https://github.com/noporpoise/seq-align">needleman-wunsch alignment</a> for pairwise alignments if chosen by the user, and <a href="https://github.com/DavidLeeds/hashmap">David Leeds' hashmap</a> for taxonomy files if user chooses.	
+AncestralClust uses <a href="https://github.com/TimoLassmann/kalign">kalign3</a> to construct multiple sequence alignments, <a href="https://github.com/smarco/WFA">wavefront alignment algorithm</a> for pairwise alignments, and <a href="https://github.com/noporpoise/seq-align">needleman-wunsch alignment</a> for pairwise alignments if chosen by the user, and <a href="https://github.com/DavidLeeds/hashmap">David Leeds' hashmap</a> for taxonomy files if user chooses.
+
+# Performance
+AncestralClust tends to have more even clusters (as measured by the coefficient of variation) with fewer relative incompatibilities for every taxonomic level than leading clustering softare UCLUST.
+<img src="https://raw.githubusercontent.com/lpipes/AncestralClust/master/Relative_COI.png?token=ABHEUH7ZC6L3CDV3MFDKXO2776D6E"> 	
