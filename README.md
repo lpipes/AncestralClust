@@ -15,4 +15,4 @@ ancestralclust [OPTIONS]
 	-u, --use_nw			use Needleman-Wunsch (default is WFA)
 	-l, --number_of_lines_to_read	number of lines to read in from file
 
-AncestralClust uses kalign3 to construct multiple sequence alignments, wavefront alignment algorithm for pairwise alignments, and needleman-wunsch alignment for pairwise alignments if chosen by the user.	
+AncestralClust uses <a href="https://github.com/TimoLassmann/kalign">kalign3</a> to construct multiple sequence alignments, <a href="https://github.com/smarco/WFA">wavefront alignment algorithm</a> for pairwise alignments, and <a href="https://github.com/noporpoise/seq-align">needleman-wunsch alignment</a> for pairwise alignments if chosen by the user, and <a href="https://github.com/DavidLeeds/hashmap">David Leeds' hashmap</a> for taxonomy files if user chooses.	
