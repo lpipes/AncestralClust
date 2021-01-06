@@ -66,7 +66,7 @@
 #define OPT_CLEAN 15
 #define OPT_UNALIGN 16
 
-static int run_kalign(struct parameters* param, int number_of_seqs, char** names_of_sequences, char** sequences_in_cluster, int*** seqArr, int* numbase,int whichRoot);
+static int run_kalign(struct parameters* param, int number_of_seqs, char** names_of_sequences, char** sequences_in_cluster, int** seqArr, int* numbase,int whichRoot);
 static int check_for_sequences(struct msa* msa);
 
 static int print_kalign_header(void);
@@ -175,7 +175,7 @@ int print_AVX_warning(void)
 
 
 //int main_kalign(int argc, char *argv[], int number_of_seqs, char** names_of_sequences, char** sequences_in_cluster, int*** seqArr, int* numbase, int whichRoot)
-int main_kalign(int number_of_seqs, char** names_of_sequences, char** sequences_in_cluster, int*** seqArr, int* numbase, int whichRoot, int num_threads)
+int main_kalign(int number_of_seqs, char** names_of_sequences, char** sequences_in_cluster, int** seqArr, int* numbase, int whichRoot, int num_threads)
 {
         int version = 0;
         int c;
@@ -459,7 +459,7 @@ ERROR:
         return EXIT_FAILURE;
 }
 
-int run_kalign(struct parameters* param, int number_of_seqs, char** names_of_sequences, char** sequences_in_cluster, int*** seqArr, int* numbase, int whichRoot)
+int run_kalign(struct parameters* param, int number_of_seqs, char** names_of_sequences, char** sequences_in_cluster, int** seqArr, int* numbase, int whichRoot)
 {
         struct msa* msa = NULL;
         struct msa* tmp_msa = NULL;
@@ -516,7 +516,7 @@ int run_kalign(struct parameters* param, int number_of_seqs, char** names_of_seq
                         ERROR_MSG("Input sequences are not aligned - cannot write to MSA format: %s", param->format);
                 }
 
-                RUN(write_msa(msa, param->outfile, param->out_format,seqArr,numbase,whichRoot));
+                RUN(write_msa(msa, param->outfile, param->out_format,seqArr,numbase,whichRoot,number_of_seqs));
 
                 free_msa(msa);
                 return OK;
@@ -609,7 +609,7 @@ int run_kalign(struct parameters* param, int number_of_seqs, char** names_of_seq
         free_tasks(tasks);
 
         /* We are done. */
-        RUN(write_msa(msa, param->outfile, param->out_format,seqArr,numbase,whichRoot));
+        RUN(write_msa(msa, param->outfile, param->out_format,seqArr,numbase,whichRoot,number_of_seqs));
 
         free_msa(msa);
         free_ap(ap);

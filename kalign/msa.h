@@ -64,7 +64,7 @@ int convert_msa_to_internal(struct msa* msa, int type);
 /* rw functions */
 
 int read_input(char* infile,struct msa** msa, int number_of_seqs, char** names_of_sequences, char** sequences_in_cluster);
-int write_msa(struct msa* msa, char* outfile, int type, int*** seqArr,int* numbase,int whichRoot);
+int write_msa(struct msa* msa, char* outfile, int type, int** seqArr,int* numbase,int whichRoot,int clusterSize);
 void free_msa(struct msa* msa);
 
 extern int merge_msa(struct msa** dest, struct msa* src);

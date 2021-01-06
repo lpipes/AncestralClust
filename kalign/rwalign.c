@@ -70,7 +70,7 @@ int read_fasta(struct in_buffer* b, struct msa** msa, int number_of_seqs, char**
 int read_msf(struct in_buffer* b, struct msa** msa);
 int read_clu(struct in_buffer* b, struct msa** msa);
 
-int write_msa_fasta(struct msa* msa,char* outfile, int*** seqArr,int* numbase,int whichRoot);
+int write_msa_fasta(struct msa* msa,char* outfile, int** seqArr,int* numbase,int whichRoot,int clusterSize);
 int write_msa_clustal(struct msa* msa,char* outfile);
 int write_msa_msf(struct msa* msa,char* outfile);
 
@@ -139,12 +139,12 @@ int main(int argc, char *argv[])
                 LOG_MSG("Writing in Clustal format");
                 RUN(write_msa_clustal(msa,"rwtest.clu"));
                 LOG_MSG("Writing in aligned fasta format");
-                RUN(write_msa_fasta(msa, "rwtest.fasta",seqArr,numbase,whichRoot));
+                RUN(write_msa_fasta(msa, "rwtest.fasta",seqArr,numbase,whichRoot,clusterSize));
                 LOG_MSG("Writing in MSF format");
                 RUN(write_msa_msf(msa,"rwtest.msf"));
         }else if(msa->aligned == ALN_STATUS_UNALIGNED){
                 LOG_MSG("Writing in aligned fasta format");
-                RUN(write_msa_fasta(msa, "rwtest.fasta", seqArr,numbase,whichRoot));
+                RUN(write_msa_fasta(msa, "rwtest.fasta", seqArr,numbase,whichRoot,clusterSize));
         }else if(msa->aligned == ALN_STATUS_UNKNOWN){
                 LOG_MSG("Unknown alignment status");
         }
@@ -257,13 +257,13 @@ ERROR:
         return FAIL;
 }
 
-int write_msa(struct msa* msa, char* outfile, int type, int*** seqArr, int *numbase, int whichRoot)
+int write_msa(struct msa* msa, char* outfile, int type, int** seqArr, int *numbase, int whichRoot,int clusterSize)
 {
 
         ASSERT(msa!= NULL, "No alignment");
 
         if(type == FORMAT_FA){
-                RUN(write_msa_fasta(msa, outfile,seqArr,numbase,whichRoot));
+                RUN(write_msa_fasta(msa, outfile,seqArr,numbase,whichRoot,clusterSize));
         }else if(type == FORMAT_MSF){
                 RUN(write_msa_msf(msa, outfile));
         }else if(type == FORMAT_CLU){
@@ -686,10 +686,10 @@ ERROR:
 
 /* rw functions; I wand fasta, msf and clustal */
 
-int write_msa_fasta(struct msa* msa,char* outfile, int*** seqArr, int* numbase, int whichRoot)
+int write_msa_fasta(struct msa* msa,char* outfile, int** seqArr, int* numbase, int whichRoot, int clusterSize)
 {
         FILE* f_ptr = NULL;
-        int i,j,c,f;
+        int i,j,c,f,k;
 
         /*if(!outfile){
                 f_ptr = stdout;
@@ -697,36 +697,58 @@ int write_msa_fasta(struct msa* msa,char* outfile, int*** seqArr, int* numbase, 
                 RUNP(f_ptr = fopen(outfile, "w"));
         }*/
 	int gap = 0;
+	int maxlength = 0;
+	for(i=0; i<msa->numseq; i++){
+		gap=0;
+		for(j=0; j<msa->sequences[i]->len; j++){
+			for(c = 0;c < msa->sequences[i]->gaps[j];c++){
+				gap++;
+			}
+		}
+		if ( msa->sequences[i]->len + gap> maxlength ){
+			maxlength = msa->sequences[i]->len+gap;
+		}
+	}
+	numbase[whichRoot] = maxlength;
+	gap =0;
 	for(i=0; i<msa->numseq; i++){
 		f=0;
 		gap=0;
-		numbase[whichRoot] = msa->sequences[i]->len;
+		if (i==0){
+			//seqArr = (int **)malloc(clusterSize*sizeof(int *));
+			for(j=0; j<clusterSize; j++){
+				seqArr[j] = (int *)malloc((numbase[whichRoot])*sizeof(int));
+				for(k=0; k<(numbase[whichRoot]); k++){
+					seqArr[j][k]=0;
+				}
+			}
+		}
 		for(j=0; j<msa->sequences[i]->len; j++){
 			for(c = 0;c < msa->sequences[i]->gaps[j];c++){
 				//seqArr[i][j+gap]='-';
-				seqArr[whichRoot][i][j+gap]=4;
+				seqArr[i][j+gap]=4;
 				gap++;
 				//strcat(seqArr[i],"-");
 				f++;
 			}
 			//seqArr[i][j+gap] = msa->sequences[i]->seq[j];
 			if ( msa->sequences[i]->seq[j] == 'A' ){ 
-				seqArr[whichRoot][i][j+gap] = 0;
+				seqArr[i][j+gap] = 0;
 			}else if ( msa->sequences[i]->seq[j] == 'C' ){
-				seqArr[whichRoot][i][j+gap] = 1;
+				seqArr[i][j+gap] = 1;
 			}else if ( msa->sequences[i]->seq[j] == 'G' ){
-				seqArr[whichRoot][i][j+gap] = 2;
+				seqArr[i][j+gap] = 2;
 			}else if ( msa->sequences[i]->seq[j] == 'T' ){
-				seqArr[whichRoot][i][j+gap] = 3;
+				seqArr[i][j+gap] = 3;
 			}else if ( msa->sequences[i]->seq[j] == 'N' ){
-				seqArr[whichRoot][i][j+gap] = 4;
+				seqArr[i][j+gap] = 4;
 			}
 			//strcat(seqArr[i],msa->sequences[i]->seq[j]);
 			f++;
 		}
 		for(c = 0;c < msa->sequences[i]->gaps[ msa->sequences[i]->len];c++){
 			//seqArr[i][j+gap]='-';
-			seqArr[whichRoot][i][j+gap]=4;	
+			seqArr[i][j+gap]=4;	
 			f++;
 			gap++;
 			//strcat(seqArr[i],"-");
