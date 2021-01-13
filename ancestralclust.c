@@ -2887,7 +2887,7 @@ void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int w
 	//for(i=0; i<numberOfRoots;i++){
 	//printf("NUMBASE: %d\n",numbase);
 	//if ( clusterSize[i+1] > 3){
-	for(i=0;j<numbase;j++){
+	for(j=0;j<numbase;j++){
 		//minimum=PP[i][rootArr[i]][j][0];
 		minimum=1.0-treeArr[whichRoot][root].posteriornc[j][0];
 		index=0;
