@@ -2035,7 +2035,8 @@ void printCLSTR(Options opt, char*** clstr, int ** clstr_lengths, int total_numb
 	}
 	clstrFile = fopen(fileName, "w");
 	if (clstr == NULL ){ printf("Error opening cluster file!"); exit(1); }
-	for(i=0; i<number_of_clusters; i++){
+	for(i=0; i<MAXNUMBEROFCLUSTERS; i++){
+		if (clstr[i][0][0] == '\0'){ break; }
 		if (clstr[i][0][0] != '\0'){
 			fprintf(clstrFile,">Cluster %d\n",i);
 		}
