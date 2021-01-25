@@ -55,6 +55,7 @@ typedef struct Options{
 	int clstr_format;
 	int output_fasta;
 	int use_nw;
+	int number_of_desc;
 }Options;
 
 typedef struct nw_alignment{
