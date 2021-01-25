@@ -3178,6 +3178,7 @@ int main(int argc, char **argv){
 	opt.output_fasta=0;
 	opt.clstr_format=1;
 	opt.use_nw=0;
+	opt.number_of_desc=10;
 	opt.numberOfLinesToRead=10000;
 	strcpy(opt.output_directory,"");
 	memset(opt.output_file,'\0',2000);
@@ -3209,6 +3210,7 @@ int main(int argc, char **argv){
 	//if (( fasta_for_clustering = fopen(opt.fasta,"r")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
 	//readInFasta(fasta_for_clustering,seqNames,sequences);
 	//fclose(fasta_for_clustering);
+	if ( fasta_specs[0] < opt.number_of_kseqs ){  opt.number_of_kseqs = fasta_specs[0]; }
 	int kseqs = opt.number_of_kseqs;
 	char** taxonomy;
 	FILE* taxonomyFile;
@@ -3434,7 +3436,7 @@ int main(int argc, char **argv){
 	//if ( numberOfUnAssigned == fasta_specs[0] ){
 	for(i=0; i<2*kseqs-1; i++){
 		//if (tree[0][indexArray[i]].nd > 1 && numberOfNodesToCut < opt.number_of_clusters-1){
-		if ( numberOfNodesToCut < opt.number_of_clusters-1 && tree[0][indexArray[i]].nd > 10){
+		if ( numberOfNodesToCut < opt.number_of_clusters-1 && tree[0][indexArray[i]].nd > opt.number_of_desc){
 		//if ( tree[0][indexArray[i]].bl > 0.03 && tree[0][indexArray[i]].nd > 1){
 			//printf("cutting at node %d\n",indexArray[i]);
 			numberOfNodesToCut++;
