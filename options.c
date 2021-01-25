@@ -12,6 +12,9 @@ static struct option long_options[]=
 	{"output_file", optional_argument, 0, 'o'},
 	{"clstr_format", optional_argument, 0, 's'},
 	{"fasta_to_assign", optional_argument, 0, 'f'},
+	{"use_nw", optional_argument, 0, 'u'},
+	{"number_of_lines_to_read", optional_argument, 0, 'l'},
+	{"number_of_descendants", optional_argument, 0, 'p'},
 	{0,0,0,0}
 };
 
@@ -28,6 +31,7 @@ char usage[] = "\nancestralclust [OPTIONS]\n\
 	-f, --fasta_format		output fasta files for each cluster\n\
 	-u, --use_nw			use Needleman-Wunsch (default is WFA)\n\
 	-l, --number_of_lines_to_read	number of lines to read in from file\n\
+	-p, --number_of_descendants     number of descendants to require to cut branch [default: 10]\n\
 	\n";
 
 void print_help_statement(){
@@ -43,7 +47,7 @@ void parse_options(int argc, char **argv, Options *opt){
 		exit(0);
 	}
 	while(1){
-		c=getopt_long(argc,argv,"hfun:k:d:i:t:c:o:l:",long_options, &option_index);
+		c=getopt_long(argc,argv,"hfun:k:d:i:t:c:o:l:p:",long_options, &option_index);
 		if (c==-1) break;
 		switch(c){
 			case 'h':
@@ -71,6 +75,11 @@ void parse_options(int argc, char **argv, Options *opt){
 				opt->hasTaxFile=1;
 				if (!success)
 					fprintf(stderr, "Invalid taxonomy file\n");
+				break;
+			case 'p':
+				success = sscanf(optarg, "%d", &(opt->number_of_desc));
+				if (!success)
+					fprintf(stderr, "Could not read number of descendants\n");
 				break;
 			case 'n':
 				success = sscanf(optarg, "%d", &(opt->number_of_clusters));
