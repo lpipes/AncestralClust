@@ -1439,10 +1439,12 @@ void printLessThanFour(gzFile fasta_to_assign, int numberOfUnassigned, Options o
 		fprintf(clusterFile,"%s\n",actualSeqsToPrint[i]);
 		fclose(clusterFile);
 	}	
-	for(i=0; i<numberOfUnassigned; i++){
-		free(taxfiles[i]);
+	if (opt.hasTaxFile==1){
+		for(i=0; i<numberOfUnassigned; i++){
+			free(taxfiles[i]);
+		}
+		free(taxfiles);
 	}
-	free(taxfiles);
 }
 void printLessThanFour_CLSTR(int numberOfUnAssigned, char*** clstr, int** clstr_lengths, int max_length, char** seqsToPrint, char** actualSeqsToPrint){
 	int i,j;
@@ -3715,7 +3717,7 @@ void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int w
 	//for(i=0; i<numberOfRoots;i++){
 	//printf("NUMBASE: %d\n",numbase);
 	//if ( clusterSize[i+1] > 3){
-	for(i=0;j<numbase;j++){
+	for(j=0;j<numbase;j++){
 		//minimum=PP[i][rootArr[i]][j][0];
 		minimum=1.0-treeArr[whichRoot][root].posteriornc[j][0];
 		index=0;
@@ -4037,6 +4039,7 @@ int main(int argc, char **argv){
 	//if (( fasta_for_clustering = fopen(opt.fasta,"r")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
 	//readInFasta(fasta_for_clustering,seqNames,sequences);
 	//fclose(fasta_for_clustering);
+	if ( fasta_specs[0] < opt.number_of_kseqs ){  opt.number_of_kseqs = fasta_specs[0]; }
 	int kseqs = opt.number_of_kseqs;
 	char** taxonomy;
 	FILE* taxonomyFile;
