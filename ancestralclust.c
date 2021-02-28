@@ -37,6 +37,7 @@ void setNumSeq(FILE* fasta, int* fasta_specs){
 	int maxLine = 0;
 	int maxName = 0;
 	int i=0;
+	int seqLength = 0;
 	while( fgets(buffer,FASTA_MAXLINE,fasta) != NULL ){
 		if ( buffer[0] == '>' ){
 			numSeq++;
@@ -47,8 +48,8 @@ void setNumSeq(FILE* fasta, int* fasta_specs){
 			if (nameLength > maxName ){
 				maxName = nameLength;
 			}
+			seqLength=0;
 		}else{
-			int seqLength = 0;
 			for(i=0; buffer[i]!='\0'; i++){
 				seqLength++;
 			}
@@ -71,12 +72,33 @@ void setNumSeq(FILE* fasta, int* fasta_specs){
 		sequences[i]=(char *)malloc(fasta_specs[1]*sizeof(char));
 	}
 }*/
-void assignDepth(node** tree, int node0, int node1, int depth){
+void printtreerecurse(int node, FILE* outfile,  int whichTree){
+	int i;
+	if (treeArr[whichTree][node].up[0]==-1){
+		fprintf(outfile,"%s",treeArr[whichTree][node].name);
+		fprintf(outfile,":%lf", treeArr[whichTree][node].bl);
+	}else{
+		fprintf(outfile,"(");
+		printtreerecurse(treeArr[whichTree][node].up[0],outfile,whichTree);
+		fprintf(outfile,",");
+		printtreerecurse(treeArr[whichTree][node].up[1],outfile,whichTree);
+		fprintf(outfile,")");
+		if (treeArr[whichTree][node].down != -1){
+			fprintf(outfile,":%lf", treeArr[whichTree][node].bl);
+		}
+	}
+}
+void printtree_newick(int node,int whichTree, FILE* outfile){
+	printtreerecurse(node,outfile,whichTree);
+	fprintf(outfile,";\n");
+	fclose(outfile);
+}
+void assignDepth(node** tree, int node0, int node1, int depth, int whichTree){
 	if( node0 != -1 && node1 != -1){
-		tree[0][node0].depth = depth;
-		tree[0][node1].depth = depth;
-		assignDepth(tree,tree[0][node0].up[0], tree[0][node0].up[1],depth+1);
-		assignDepth(tree,tree[0][node1].up[0], tree[0][node1].up[1],depth+1);
+		tree[whichTree][node0].depth = depth;
+		tree[whichTree][node1].depth = depth;
+		assignDepth(tree,tree[whichTree][node0].up[0], tree[whichTree][node0].up[1],depth+1, whichTree);
+		assignDepth(tree,tree[whichTree][node1].up[0], tree[whichTree][node1].up[1],depth+1, whichTree);
 	}
 }
 void readInFasta(FILE* fasta, char** seqNames, char** sequences){
@@ -462,7 +484,7 @@ int NJ(node** tree, double** distMat,int clusterSize,int whichTree, int whichTre
 void printtree(node** tree, int whichTree, int clusterSize){
 	int i;
 	for(i=0; i<2*clusterSize-1; i++){
-		printf("%i: up: %i %i, down: %i, bl: %f, distanceFR: %lf, clusternumber: %d, nd: %d, name: %s\n",i,tree[whichTree][i].up[0],tree[whichTree][i].up[1],tree[whichTree][i].down,tree[whichTree][i].bl/*totsites*/,tree[whichTree][i].distanceFromRoot,tree[whichTree][i].clusterNumber,tree[whichTree][i].nd,tree[whichTree][i].name);
+		printf("%i: up: %i %i, down: %i, bl: %f, depth: %d, distanceFR: %lf, clusternumber: %d, nd: %d\n",i,tree[whichTree][i].up[0],tree[whichTree][i].up[1],tree[whichTree][i].down,tree[whichTree][i].bl/*totsites*/,tree[whichTree][i].depth,tree[whichTree][i].distanceFromRoot,tree[whichTree][i].clusterNumber,tree[whichTree][i].nd);
 	}
 }
 void sortArray(double* branchLengths, int* indexArray, int kseqs){
@@ -2033,7 +2055,8 @@ void printCLSTR(Options opt, char*** clstr, int ** clstr_lengths, int total_numb
 	}
 	clstrFile = fopen(fileName, "w");
 	if (clstr == NULL ){ printf("Error opening cluster file!"); exit(1); }
-	for(i=0; i<number_of_clusters; i++){
+	for(i=0; i<MAXNUMBEROFCLUSTERS; i++){
+		if (clstr[i][0][0] == '\0'){ break; }
 		if (clstr[i][0][0] != '\0'){
 			fprintf(clstrFile,">Cluster %d\n",i);
 		}
@@ -2119,6 +2142,797 @@ int findMaxClade(node** tree, int number_of_leaves, double** distMat2){
 	}
 	return numberOfNodesToCut;
 }
+double findLengthToLCA(node** tree, int tip, int lca, double length, int whichTree){
+	if (tip == lca){
+		return length;
+	}else{
+		length = length + tree[whichTree][tip].bl;
+		findLengthToLCA(tree,tree[whichTree][tip].down,lca,length,whichTree);
+	}
+}
+void reRoot(node** tree, int node, int childToRestructure, int whichTree, int clusterSize, int number_of_rotations){
+	int end=0;
+	if (tree[whichTree][tree[whichTree][node].down].down == -1){
+		//tree[whichTree][tree[whichTree][node].down].down = node;	
+		//return;
+		end=1;
+	}
+	int orig_parent = tree[whichTree][node].down;
+	int orig_grandparent;
+	int childToRestructureNext;
+	if (end==0){
+		orig_grandparent= tree[whichTree][tree[whichTree][node].down].down;
+	}
+	if ( tree[whichTree][orig_parent].up[0] == node ){
+		tree[whichTree][orig_parent].up[0] = childToRestructure;
+		if ( tree[whichTree][orig_parent].down != -1 ){
+			childToRestructureNext=tree[whichTree][orig_parent].up[1];
+			tree[whichTree][orig_parent].up[1] = tree[whichTree][orig_parent].down;
+		}
+	}else{
+		tree[whichTree][orig_parent].up[1] = childToRestructure;
+		if ( tree[whichTree][orig_parent].down != -1 ){
+			childToRestructureNext = tree[whichTree][orig_parent].up[0];
+			tree[whichTree][orig_parent].up[0] = tree[whichTree][orig_parent].down;
+		}
+	}
+	tree[whichTree][childToRestructure].down = tree[whichTree][node].down;
+	if ( tree[whichTree][node].up[0] == childToRestructure ){
+		//tree[whichTree][node].up[0] = tree[whichTree][node].down;
+		tree[whichTree][orig_parent].down = node;
+		if ( tree[whichTree][node].down != -1 ){
+			tree[whichTree][node].up[0] = tree[whichTree][node].down;
+		}
+	}else{
+		//tree[whichTree][node].up[1] = tree[whichTree][node].down;
+		tree[whichTree][orig_parent].down = node;
+		if ( tree[whichTree][node].down != -1 ){
+			tree[whichTree][node].up[1] = tree[whichTree][node].down;
+		}
+	}
+	printtree(treeArr, whichTree, clusterSize);
+	if (end==1){
+		return;
+	}
+	if ( tree[whichTree][orig_parent].up[0] == childToRestructure){
+		//reRoot(tree,orig_grandparent,childToRestructureNext,whichTree,clusterSize);
+	}else{
+		//reRoot(tree,orig_grandparent,childToRestructureNext,whichTree,clusterSize);
+	}
+	if (end==0){
+		tree[whichTree][orig_grandparent].down = orig_parent;
+	}
+	//if ( tree[whichTree][node].down ==-1 ){
+	//	tree[whichTree][node].down = new_parent;
+	//	tree[whichTree][node].bl = tree[whichTree][new_parent].bl;
+	//	return;
+	//}else{
+	//	tree[whichTree][node].down = new_parent;
+	//	tree[whichTree][node].bl = tree[whichTree][new_parent].bl;
+	//	reRoot(tree, node, tree[whichTree][node].down, whichTree);
+	//}
+}
+/*void rotateTree(node** tree, int whichTree, int node, int childToRestructure, int number_of_rotations, int clusterSize){
+	int rotations = 0;
+	int grandparent = -1;
+	int prev_parent = -1;
+	int childToRestructureNext = -1;
+	int parent = tree[whichTree][node].down;
+	int child1 = tree[whichTree][node].up[0];
+	int child2 = tree[whichTree][node].up[1];
+	while(rotations < number_of_rotations-1){
+		parent = tree[whichTree][node].down;
+		child1 = tree[whichTree][node].up[0];
+		child2 = tree[whichTree][node].up[1];
+		if ( number_of_rotations - rotations > 1 ){
+			grandparent = tree[whichTree][parent].down;
+		}else{
+			grandparent = -1;
+		}
+		if ( tree[whichTree][parent].up[0] == node ){
+			childToRestructureNext = tree[whichTree][parent].up[1];
+			if ( tree[whichTree][parent].down != -1 ){
+				tree[whichTree][parent].up[1] = tree[whichTree][parent].down;
+				//if ( grandparent != -1 ){
+				//	tree[whichTree][grandparent].down = tree[whichTree][parent].up[1];
+				//}
+			}
+			tree[whichTree][parent].up[0] = childToRestructure;
+		}else{
+			childToRestructureNext = tree[whichTree][parent].up[0];
+			if ( tree[whichTree][parent].down != -1 ){
+				tree[whichTree][parent].up[0] = tree[whichTree][parent].down;
+				//if ( grandparent != -1 ){
+				//	tree[whichTree][grandparent].down = tree[whichTree][parent].up[0];
+				//}
+			}
+			tree[whichTree][parent].up[1] = childToRestructure;
+		}
+		if ( tree[whichTree][node].up[0] == childToRestructure ){
+			tree[whichTree][node].up[0] = tree[whichTree][node].down;
+			if (rotations == 0 ){
+				tree[whichTree][node].up[0] = parent;
+			}
+		}else{
+			tree[whichTree][node].up[1] = tree[whichTree][node].down;
+			if (rotations == 0 ){
+				tree[whichTree][node].up[1] = parent;
+			}
+		}
+		tree[whichTree][childToRestructure].down = tree[whichTree][node].down;
+		tree[whichTree][parent].down = node;
+		if ( tree[whichTree][parent].up[0] == node && grandparent == -1 ){
+			tree[whichTree][grandparent].down = tree[whichTree][parent].up[1];
+		}
+		if ( tree[whichTree][parent].up[1] == node && grandparent == -1 ){
+			tree[whichTree][grandparent].down = tree[whichTree][parent].up[0];
+		}
+		tree[whichTree][node].down = prev_parent;
+		prev_parent = parent;
+		node = grandparent;
+		childToRestructure = childToRestructureNext;
+		rotations = rotations +2;
+		printtree(treeArr, whichTree, clusterSize);
+	}
+	if ( grandparent != -1 ){
+		tree[whichTree][node].down = parent;
+		if (parent == tree[whichTree][node].up[0] ){
+			tree[whichTree][node].up[0] = childToRestructureNext;
+		}else{
+			tree[whichTree][node].up[1] = childToRestructureNext;
+		}
+		tree[whichTree][childToRestructureNext].down = node;
+		tree[whichTree][grandparent].down = node;
+		if ( node == tree[whichTree][grandparent].up[0] ){
+			tree[whichTree][grandparent].up[0] = childToRestructure;
+		}else{
+			tree[whichTree][grandparent].up[1] = childToRestructure;
+		}
+		if ( childToRestructure == tree[whichTree][node].up[0]){
+			tree[whichTree][node].up[0] = grandparent;
+		}else{
+			tree[whichTree][node].up[1] = grandparent;
+		}
+	}else{
+		tree[whichTree][parent].down = node;
+		if ( tree[whichTree][parent].up[0] == node){
+			tree[whichTree][parent].up[0] = childToRestructure;
+		}else{
+			tree[whichTree][parent].up[1] = childToRestructure;
+		}
+		if ( tree[whichTree][node].up[0] == childToRestructure){
+			tree[whichTree][node].up[0] = parent;
+		}else{
+			tree[whichTree][node].up[1] = parent;
+		}
+	}
+	printtree(treeArr, whichTree, clusterSize);
+}*/
+int rotateTree(node** tree, int whichTree, int new_root, int node, int number_of_nodes, int prev, double distance, int tipA, int tipB, int firstiter){
+	if (node==new_root){
+		return prev;
+	}
+	int child0 = tree[whichTree][node].up[0];
+	int child1 = tree[whichTree][node].up[1];
+	int parent = tree[whichTree][node].down;
+	int leftOrRight = -1;
+	leftOrRight = findLeftOrRight(tree,whichTree,new_root,child0);
+	if (leftOrRight == 1){
+		int leftOrRight2 = -1;
+		leftOrRight2 = findLeftOrRight(tree,whichTree,new_root,tree[whichTree][child0].up[1]);
+		tree[whichTree][node].down = child0;
+		if (leftOrRight2 == 1){
+			if ( tree[whichTree][node].up[1] == child0){
+				tree[whichTree][node].up[1] = tree[whichTree][child0].up[0];
+			}
+			if ( tree[whichTree][node].up[0] == child0){
+				tree[whichTree][node].up[0] = tree[whichTree][child0].up[0];
+			}
+			if ( firstiter==0 ){
+				//tree[whichTree][node].bl = tree[whichTree][child0].bl + tree[whichTree][child1].bl;
+				//tree[whichTree][child1].bl = 0;
+				tree[whichTree][child1].bl = tree[whichTree][child0].bl + tree[whichTree][child1].bl;
+				//tree[whichTree][tree[whichTree][child0].up[0]].bl = tree[whichTree][child0].bl + tree[whichTree][child1].bl;
+				tree[whichTree][node].bl = tree[whichTree][tree[whichTree][child0].up[1]].bl;
+				tree[whichTree][tree[whichTree][child0].up[1]].bl=0;
+				if ( tree[whichTree][tree[whichTree][tree[whichTree][child0].up[1]].up[1]].up[1] != -1){
+					double temp = tree[whichTree][tree[whichTree][tree[whichTree][child0].up[1]].up[1]].bl;
+					tree[whichTree][tree[whichTree][tree[whichTree][child0].up[1]].up[1]].bl = tree[whichTree][tree[whichTree][tree[whichTree][tree[whichTree][child0].up[1]].up[1]].up[1]].bl;
+					tree[whichTree][tree[whichTree][tree[whichTree][tree[whichTree][child0].up[1]].up[1]].up[1]].bl=temp;
+				}
+			}else{
+				//tree[whichTree][tree[whichTree][child0].up[0]].bl = tree[whichTree][child0].bl;
+				tree[whichTree][node].bl = tree[whichTree][child0].bl;
+				tree[whichTree][child0].bl = 0;
+			}
+			tree[whichTree][tree[whichTree][child0].up[0]].down = node;
+			tree[whichTree][child0].up[0] = node;
+		}else{
+			if ( tree[whichTree][node].up[1] == child0){
+				tree[whichTree][node].up[1] = tree[whichTree][child0].up[1];
+			}
+			if ( tree[whichTree][node].up[0] == child0){
+				tree[whichTree][node].up[0] = tree[whichTree][child0].up[1];
+			}
+			if ( firstiter == 0 ){
+				//tree[whichTree][tree[whichTree][child0].up[1]].bl = tree[whichTree][child0].bl + tree[whichTree][child1].bl;
+				//tree[whichTree][node].bl = tree[whichTree][child0].bl + tree[whichTree][child1].bl;
+				//tree[whichTree][child1].bl = 0;
+				tree[whichTree][child1].bl = tree[whichTree][child0].bl + tree[whichTree][child1].bl;
+				tree[whichTree][node].bl = tree[whichTree][tree[whichTree][child0].up[0]].bl;
+				tree[whichTree][tree[whichTree][child0].up[0]].bl=0;
+				if ( tree[whichTree][tree[whichTree][tree[whichTree][child0].up[0]].up[0]].up[0] != -1){
+				double temp = tree[whichTree][tree[whichTree][tree[whichTree][child0].up[0]].up[0]].bl;
+                                tree[whichTree][tree[whichTree][tree[whichTree][child0].up[0]].up[0]].bl = tree[whichTree][tree[whichTree][tree[whichTree][tree[whichTree][child0].up[0]].up[0]].up[0]].bl;
+                                tree[whichTree][tree[whichTree][tree[whichTree][tree[whichTree][child0].up[0]].up[0]].up[0]].bl=temp;
+				}
+			}else{
+				tree[whichTree][node].bl = tree[whichTree][child0].bl;
+				tree[whichTree][child0].bl = 0;
+				//tree[whichTree][tree[whichTree][child0].up[1]].bl = tree[whichTree][child0].bl;
+			}
+			tree[whichTree][tree[whichTree][child0].up[1]].down = node;
+			tree[whichTree][child0].up[1] = node;
+		}
+		//tree[whichTree][node].up[0] = tree[whichTree][child1].up[1];
+		tree[whichTree][child1].down = node;
+		tree[whichTree][child0].down = -1;
+		assignDepth(tree,tree[whichTree][child0].up[0],tree[whichTree][child0].up[1],1,whichTree);
+		calculateTotalDistanceFromRoot(child0,0.0,whichTree);
+		if ( tree[whichTree][tipA].distanceFromRoot + tree[whichTree][tipB].distanceFromRoot == distance){
+			return node;
+		}
+		prev=node;
+		//tree[whichTree][node].bl = tree[whichTree][child0].bl;
+		//tree[whichTree][child0].bl=0;
+	}else{
+		int leftOrRight2 = -1;
+		leftOrRight2 = findLeftOrRight(tree,whichTree,new_root,tree[whichTree][child1].up[1]);
+		tree[whichTree][node].down = child1;
+		if (leftOrRight2 == 1){
+			if ( tree[whichTree][node].up[1] == child1){
+				tree[whichTree][node].up[1] = tree[whichTree][child1].up[0];
+			}
+			if ( tree[whichTree][node].up[0] == child1){
+				tree[whichTree][node].up[0] = tree[whichTree][child1].up[0];
+			}
+			if ( firstiter == 0 ){
+				//tree[whichTree][tree[whichTree][child1].up[0]].bl = tree[whichTree][child0].bl + tree[whichTree][child1].bl;
+				//tree[whichTree][node].bl = tree[whichTree][child0].bl + tree[whichTree][child1].bl;
+				//tree[whichTree][child1].bl = 0;
+				tree[whichTree][child0].bl = tree[whichTree][child0].bl + tree[whichTree][child1].bl;
+				tree[whichTree][node].bl = tree[whichTree][tree[whichTree][child1].up[1]].bl;
+				tree[whichTree][tree[whichTree][child1].up[1]].bl=0;
+				if ( tree[whichTree][tree[whichTree][tree[whichTree][child1].up[1]].up[1]].up[1] != -1){
+				double temp = tree[whichTree][tree[whichTree][tree[whichTree][child1].up[1]].up[1]].bl;
+                                tree[whichTree][tree[whichTree][tree[whichTree][child1].up[1]].up[1]].bl = tree[whichTree][tree[whichTree][tree[whichTree][tree[whichTree][child1].up[1]].up[1]].up[1]].bl;
+                                tree[whichTree][tree[whichTree][tree[whichTree][tree[whichTree][child1].up[1]].up[1]].up[1]].bl=temp;
+				}
+			}else{
+				//tree[whichTree][tree[whichTree][child1].up[0]].bl = tree[whichTree][child1].bl;
+				//tree[whichTree][node].bl = tree[whichTree][child1].bl;
+				//tree[whichTree][child1].bl = tree[whichTree][child0].bl + tree[whichTree][child1].bl;
+				tree[whichTree][node].bl = tree[whichTree][child1].bl;
+				tree[whichTree][child1].bl = 0;
+			}
+			tree[whichTree][tree[whichTree][child1].up[0]].down = node;
+			tree[whichTree][child1].up[0] = node;
+		}else{
+			if ( tree[whichTree][node].up[1] == child1){
+				tree[whichTree][node].up[1] = tree[whichTree][child1].up[1];
+			}
+			if ( tree[whichTree][node].up[0] == child1){
+				tree[whichTree][node].up[0] = tree[whichTree][child1].up[1];
+			}
+			if ( firstiter == 0 ){
+				//tree[whichTree][node].bl = tree[whichTree][child0].bl + tree[whichTree][child1].bl;
+				//tree[whichTree][child1].bl = 0; 
+				//tree[whichTree][tree[whichTree][child1].up[1]].bl = tree[whichTree][child0].bl + tree[whichTree][child1].bl;
+				tree[whichTree][child0].bl = tree[whichTree][child0].bl + tree[whichTree][child1].bl;
+				tree[whichTree][node].bl = tree[whichTree][tree[whichTree][child1].up[0]].bl;
+				tree[whichTree][tree[whichTree][child1].up[0]].bl=0;
+				if ( tree[whichTree][tree[whichTree][tree[whichTree][child1].up[0]].up[0]].up[0] != -1){
+				double temp = tree[whichTree][tree[whichTree][tree[whichTree][child1].up[0]].up[0]].bl;
+                                tree[whichTree][tree[whichTree][tree[whichTree][child1].up[0]].up[0]].bl = tree[whichTree][tree[whichTree][tree[whichTree][tree[whichTree][child1].up[0]].up[0]].up[0]].bl;
+                                tree[whichTree][tree[whichTree][tree[whichTree][tree[whichTree][child1].up[0]].up[0]].up[0]].bl=temp;
+				}
+			}else{
+				//tree[whichTree][tree[whichTree][child1].up[1]].bl = tree[whichTree][child1].bl;
+				tree[whichTree][node].bl = tree[whichTree][child1].bl;
+				tree[whichTree][child1].bl = 0;
+			}
+			tree[whichTree][tree[whichTree][child1].up[1]].down = node;
+			tree[whichTree][child1].up[1] = node;
+			
+		}
+		tree[whichTree][child0].down = node;
+		tree[whichTree][child1].down = -1;
+		tree[whichTree][child1].depth = 0;
+		assignDepth(tree,tree[whichTree][child1].up[0],tree[whichTree][child1].up[1],1,whichTree);
+		calculateTotalDistanceFromRoot(child1,0.0,whichTree);
+		if ( tree[whichTree][tipA].distanceFromRoot + tree[whichTree][tipB].distanceFromRoot == distance){
+			return node;
+		}
+		prev=node;
+		//tree[whichTree][node].bl = tree[whichTree][child1].bl;
+		//tree[whichTree][child1].bl=0;
+	}
+	printtree(tree,whichTree,number_of_nodes);
+	firstiter=1;
+	if ( leftOrRight == 1 && child0 ==new_root){
+		return prev;
+	}else if ( leftOrRight == 0 && child1==new_root){
+		return prev;
+	}
+		if (leftOrRight == 1){
+			rotateTree(tree,whichTree,new_root,child0,number_of_nodes,prev,distance,tipA,tipB,firstiter);
+		}else {
+			rotateTree(tree,whichTree,new_root,child1,number_of_nodes,prev,distance,tipA,tipB,firstiter);
+		}
+}
+/*int findLeftOrRight(node** tree, int whichTree, int node, int findNode){
+	if ( node == findNode){ return 1; }
+	if ( tree[whichTree][node].up[0] == -1 ){
+		return 0;
+	}else{
+		findLeftOrRight(tree,whichTree,tree[whichTree][node].up[0],findNode);
+		findLeftOrRight(tree,whichTree,tree[whichTree][node].up[1],findNode);
+	}
+}*/
+int findLeftOrRight(node** tree, int whichTree, int node, int findNode){
+	if ( node == findNode ){ return 1; }
+	if ( node == -1 ){ return 0; }
+	findLeftOrRight(tree,whichTree,tree[whichTree][node].down,findNode);
+}
+int isParent(node** tree, int whichTree, int node, int findNode){
+	if ( node == -1 ){
+		return 0;
+	}else if ( node == findNode ){
+		return 1;
+	}else{
+		isParent(tree,whichTree,tree[whichTree][node].down,findNode);
+	}
+}
+void findPathToTipB(node** tree, int node, int endpoint, int whichTree, int lca, int* path, int number_of_nodes, int passed_lca){
+	int i;
+	int placement=0;
+	for(i=number_of_nodes-1; i>=0; i--){
+		if (path[i]==-1){ placement=i; }
+	}
+	if (node == endpoint ){
+		path[placement] = node;
+		return;
+	}
+	if (node==lca){
+		passed_lca=1;
+	}
+	//if (node != lca){ path[placement] = node; }
+	//if ( tree[whichTree][node].down != -1){ 
+	if (node != -1){ path[placement] = node;
+	}
+	if ( isParent(tree,whichTree,node,lca) == 1 && node != lca && passed_lca != 1){
+		findPathToTipB(tree,tree[whichTree][node].down,endpoint,whichTree,lca,path,number_of_nodes,passed_lca);
+	}else if ( findLeftOrRight(tree,whichTree,endpoint,tree[whichTree][node].up[0]) == 1 ){
+		findPathToTipB(tree,tree[whichTree][node].up[0],endpoint,whichTree,lca,path,number_of_nodes,passed_lca);
+	}else{
+		findPathToTipB(tree,tree[whichTree][node].up[1],endpoint,whichTree,lca,path,number_of_nodes,passed_lca);
+	}
+}
+int rebuildTree(node** tree, int whichTree, int old_root, int* path, double midpoint, int stop){
+	int i,j,k;
+	int number_of_nodes = old_root;
+	old_root--;
+	int orig_child0 = tree[whichTree][old_root].up[0];
+	int orig_child1 = tree[whichTree][old_root].up[1];
+	double branch_to_split = tree[whichTree][stop].bl;
+	for(i=0; i<number_of_nodes; i++){
+		if ( path[i] == stop ){
+			if ( i > 0 && tree[whichTree][path[i-1]].bl > midpoint ){
+				path[i+1]=path[i-1];
+			}
+			int* path_to_old_root = (int *)malloc(number_of_nodes*sizeof(int));
+			int prev_child = -1;
+			int prev_child_index = 0;
+			for(j=0; j<number_of_nodes; j++){
+				path_to_old_root[j] = -1;
+			}
+			int leftOrRight2 = findLeftOrRight(tree,whichTree,path[i],tree[whichTree][old_root].up[0]);
+			if ( tree[whichTree][path[i]].depth < tree[whichTree][path[i+1]].depth /*&& tree[whichTree][path[i]].down != old_root*/){
+				findPathToTipB(tree,tree[whichTree][path[i]].down,old_root,whichTree,old_root,path_to_old_root,number_of_nodes,0);
+			}else if ( path[i+1] != old_root){
+				findPathToTipB(tree,tree[whichTree][path[i+1]].down,old_root,whichTree,old_root,path_to_old_root,number_of_nodes,0);
+			}else if ( path[i+1] == old_root){
+				path_to_old_root[0] = path[i];
+				path_to_old_root[1] = path[i+1];
+			}
+			/*for(j=0; j<number_of_nodes; j++){
+				if (old_root == path_to_old_root[j]){
+					path_to_old_root[j]=-1;
+				}
+			}*/
+			if (leftOrRight2==0){
+				tree[whichTree][tree[whichTree][old_root].up[0]].down = tree[whichTree][old_root].up[1];
+				tree[whichTree][tree[whichTree][old_root].up[0]].bl = tree[whichTree][tree[whichTree][old_root].up[0]].bl + tree[whichTree][tree[whichTree][old_root].up[1]].bl;
+				int leftOrRight3 = findLeftOrRight(tree,whichTree,path[i],tree[whichTree][tree[whichTree][old_root].up[1]].up[0]);
+				if (leftOrRight3 == 1 && path_to_old_root[1] == -1){
+					prev_child = tree[whichTree][tree[whichTree][old_root].up[1]].up[0];
+					prev_child_index = 0;
+					tree[whichTree][tree[whichTree][old_root].up[1]].up[0] = tree[whichTree][old_root].up[0];
+					//tree[whichTree][tree[whichTree][old_root].up[1]].down = path[i+1];
+					//tree[whichTree][tree[whichTree][old_root].up[1]].bl = tree[whichTree][path[i+1]].bl;
+					//if ( 
+				}else if ( path_to_old_root[1] == -1){
+					prev_child_index = 1;
+					prev_child = tree[whichTree][tree[whichTree][old_root].up[1]].up[1];
+					tree[whichTree][tree[whichTree][old_root].up[1]].up[1] = tree[whichTree][old_root].up[0];
+				}
+			}else{
+				tree[whichTree][tree[whichTree][old_root].up[1]].down = tree[whichTree][old_root].up[0];
+				tree[whichTree][tree[whichTree][old_root].up[1]].bl = tree[whichTree][tree[whichTree][old_root].up[0]].bl + tree[whichTree][tree[whichTree][old_root].up[1]].bl;
+				int leftOrRight3 = findLeftOrRight(tree,whichTree,path[i],tree[whichTree][tree[whichTree][old_root].up[0]].up[0]);
+				if (leftOrRight3 == 1 && path_to_old_root[1] == -1){
+					prev_child = tree[whichTree][tree[whichTree][old_root].up[0]].up[0];
+					prev_child_index = 0;
+					tree[whichTree][tree[whichTree][old_root].up[0]].up[0] = tree[whichTree][old_root].up[1];
+				}else if (path_to_old_root[1] == -1){
+					prev_child_index = 1;
+					prev_child = tree[whichTree][tree[whichTree][old_root].up[0]].up[1];
+					tree[whichTree][tree[whichTree][old_root].up[0]].up[1] = tree[whichTree][old_root].up[1];
+				}
+			}
+			for(j=number_of_nodes-1; j>=0; j--){
+				if (path_to_old_root[j] != -1){
+					break;
+				}
+			}
+			j--;
+			while(/*tree[whichTree][tree[whichTree][path_to_old_root[j]].down].down !=-1 && tree[whichTree][path_to_old_root[j]].down*/j>=0){
+				int child0 = tree[whichTree][path_to_old_root[j]].up[0];
+				int child1 = tree[whichTree][path_to_old_root[j]].up[1];
+				int parent = tree[whichTree][path_to_old_root[j]].down;
+				if (j==0 && prev_child_index==0 && path_to_old_root[1]==-1){
+					child0 = prev_child;
+				}
+				if (j==0 && prev_child_index==1 && path_to_old_root[1]==-1){
+					child1 = prev_child;
+				}
+				//tree[whichTree][path_to_old_root[j+1]].down = path_to_old_root[j];
+				//tree[whichTree][path_to_old_root[j+1]].bl = tree[whichTree][path_to_old_root[j]].bl;
+				int found=0;
+				for(k=0; k<number_of_nodes; k++){
+					if ( tree[whichTree][path_to_old_root[j]].up[0]==path_to_old_root[k] || tree[whichTree][path_to_old_root[j]].up[0]==path[i+1]){
+						found=1;
+						//tree[whichTree][path_to_old_root[j]].up[0]=path_to_old_root[j+1];
+						if (path_to_old_root[j] != orig_child0 && path_to_old_root[j] != orig_child1){
+							tree[whichTree][path_to_old_root[j]].up[0]=parent;
+							tree[whichTree][parent].down = path_to_old_root[j];
+						}
+						if ( path_to_old_root[j] == orig_child0 ){
+							tree[whichTree][path_to_old_root[j]].up[0]=orig_child1;
+						}
+						if (path_to_old_root[j] == orig_child1 ){
+							tree[whichTree][path_to_old_root[j]].up[0]=orig_child0;
+						}
+						tree[whichTree][path_to_old_root[j]].down=child0;
+						tree[whichTree][path_to_old_root[j]].bl = tree[whichTree][child0].bl;
+					}
+				}
+				if ( found==0 ){
+					//tree[whichTree][path_to_old_root[j]].up[1]=path_to_old_root[j+1];
+					if (path_to_old_root[j] != orig_child0 && path_to_old_root[j] != orig_child1){
+						tree[whichTree][path_to_old_root[j]].up[1]=parent;
+						tree[whichTree][parent].down = path_to_old_root[j];
+					}
+					if ( path_to_old_root[j] == orig_child0 ){
+						tree[whichTree][path_to_old_root[j]].up[1]=orig_child1;
+					}
+					if (path_to_old_root[j] == orig_child1 ){
+						tree[whichTree][path_to_old_root[j]].up[1]=orig_child0;
+					}
+					tree[whichTree][path_to_old_root[j]].down = child1;
+					tree[whichTree][path_to_old_root[j]].bl = tree[whichTree][child1].bl;
+				}
+				//printtree(tree,whichTree,(old_root+2)/2);
+				j--;
+			}
+			tree[whichTree][old_root].down = -1;
+			tree[whichTree][old_root].up[0] = path[i];
+			tree[whichTree][old_root].up[1] = path[i+1];
+			tree[whichTree][tree[whichTree][old_root].up[0]].bl = 0;
+			//tree[whichTree][tree[whichTree][old_root].up[0]].bl = branch_to_split;
+			//tree[whichTree][tree[whichTree][old_root].up[0]].bl = branch_to_split - reposition;
+			tree[whichTree][tree[whichTree][old_root].up[1]].bl = 0;
+			//tree[whichTree][tree[whichTree][old_root].up[1]].bl = branch_to_split - (branch_to_split - reposition);
+			if ( path[i+1] == tree[whichTree][path[i]].down && path_to_old_root[1] != -1){
+				if (path[i] == tree[whichTree][path[i+1]].up[1]){
+					tree[whichTree][path[i+1]].up[1] = tree[whichTree][path[i+1]].down;
+				}else if ( path[i] == tree[whichTree][path[i+1]].up[0]){
+					tree[whichTree][path[i+1]].up[0] = tree[whichTree][path[i+1]].down;
+				}
+			}
+			if ( path[i] == tree[whichTree][path[i+1]].down && path_to_old_root[1] != -1){
+				if ( path[i] == tree[whichTree][path[i+1]].down ){
+					if (path[i+1] == tree[whichTree][path[i]].up[1]){
+						tree[whichTree][path[i]].up[1] = tree[whichTree][path[i]].down;
+					}else if ( path[i+1] == tree[whichTree][path[i]].up[0]){
+						tree[whichTree][path[i]].up[0] = tree[whichTree][path[i]].down;
+					}
+				}
+			}
+			tree[whichTree][path[i]].down = old_root;
+			tree[whichTree][path[i+1]].down = old_root;
+			free(path_to_old_root);
+			break;
+		}
+	}
+	/*for(i=0; i<number_of_nodes-1; i++){
+		if (tree[whichTree][i].up[0] == path[i]){
+			
+		}
+	}
+	int leftOrRight = findLeftOrRight(tree,whichTree,path[i],child1);
+	if (leftOrRight == 1){
+		tree[whichTree][child1].bl = tree[whichTree][child1].bl + tree[whichTree][child2].bl;
+		tree[whichTree][child2].bl = 0;
+		tree[whichTree][child1].down = child2;
+	}else{
+		tree[whichTree][child2].bl = tree[whichTree][child1].bl + tree[whichTree][child2].bl;
+		tree[whichTree][child1].bl = 0;
+		tree[whichTree][child2].down = child1;
+	}*/
+	return old_root;
+}
+int findMidpoint(node** tree, int node, double midpoint, int whichTree, int number_of_nodes, int currentRoot, int lca, int tipB, double reposition_difference){
+	double start_point =0;
+	int tipA = node;
+	int prev = node;
+	int* path = (int *)malloc((2*number_of_nodes-1)*sizeof(int));
+	int i;
+	for(i=0; i<2*number_of_nodes-1; i++){
+		path[i]=-1;
+	}
+	findPathToTipB(tree,tipA,tipB,whichTree,lca,path,2*number_of_nodes-1,0);
+	//for(i=0; i<2*number_of_nodes-1; i++){
+	//	printf("path[%d]=%d\n",i,path[i]);
+	//}
+	i=0;
+	node = path[i];
+	while(start_point < midpoint ){
+		start_point = start_point + tree[whichTree][path[i]].bl;
+		prev = node;
+		node = path[i];
+		i++;
+	}
+	if (tree[whichTree][node].down == currentRoot){
+		node = currentRoot;
+	}
+	//printf("node is %d\n",node);
+	/*if (node == -1 ){
+		node = prev;
+	}
+	if (tree[whichTree][node].down == -1){
+		if (prev == tree[whichTree][node].up[0]){
+			node = tree[whichTree][node].up[1];
+		}
+	}else{
+		node = tree[whichTree][node].down;
+	}*/
+	/*double length_to_be_added = midpoint - (tree[whichTree][tipA].distanceFromRoot - tree[whichTree][prev].distanceFromRoot);
+	if ( length_to_be_added < 0.0 ){ 
+		length_to_be_added = length_to_be_added*-1.0; 
+	}
+	double temp = tree[whichTree][prev].bl;
+	tree[whichTree][prev].bl = length_to_be_added;
+	tree[whichTree][node].bl = tree[whichTree][node].bl + (temp-length_to_be_added);
+	if ( tree[whichTree][node].down == -1 ){
+		if ( tree[whichTree][node].up[0] == prev ){
+			tree[whichTree][tree[whichTree][node].up[1]].bl = tree[whichTree][tree[whichTree][node].up[1]].bl + (temp-length_to_be_added);
+		}else{
+			tree[whichTree][tree[whichTree][node].up[0]].bl = tree[whichTree][tree[whichTree][node].up[0]].bl + (temp-length_to_be_added);
+		}
+	}else{
+		//tree[whichTree][node].bl = tree[whichTree][node].bl + length_to_be_added;
+	}*/
+	if ( currentRoot == node ){
+		tree[whichTree][tree[whichTree][currentRoot].up[0]].bl = 0;
+		tree[whichTree][tree[whichTree][currentRoot].up[1]].bl = 0;
+	}else{
+		node=rebuildTree(tree,whichTree,2*number_of_nodes-1,path,midpoint,node);
+	}
+	free(path);
+	/*node = rotateTree(tree,whichTree,node,currentRoot,number_of_nodes,-1,midpoint*2.0,tipA,tipB,0);
+	for(i=0; i<2*number_of_nodes-1; i++){
+		if (tree[whichTree][i].down==-1){
+			node = i;
+		}
+	}
+	if ( tree[whichTree][tree[whichTree][node].up[0]].bl == 0 ){
+		tree[whichTree][tree[whichTree][node].up[0]].bl = reposition_difference;
+		tree[whichTree][tree[whichTree][node].up[1]].bl = tree[whichTree][tree[whichTree][node].up[1]].bl - reposition_difference;
+	}else{
+		tree[whichTree][tree[whichTree][node].up[1]].bl = reposition_difference;
+		tree[whichTree][tree[whichTree][node].up[0]].bl = tree[whichTree][tree[whichTree][node].up[0]].bl - reposition_difference;
+	}*/
+	//node = rotateTree(tree,whichTree,lca,currentRoot,number_of_nodes);
+	//tree[whichTree][node].depth =0;
+	//tree[whichTree][node].bl = 0;
+	assignDepth(tree,tree[whichTree][node].up[0],tree[whichTree][node].up[1],1,whichTree);
+	calculateTotalDistanceFromRoot(node,0.0,whichTree);
+	if ( tree[whichTree][tipA].distanceFromRoot > tree[whichTree][tipB].distanceFromRoot ){
+		//reposition_difference = midpoint - tree[whichTree][tipB].distanceFromRoot;
+		int leftOrRight = findLeftOrRight(tree,whichTree,tipB,tree[whichTree][node].up[0]);
+		if (leftOrRight == 1){
+			tree[whichTree][tree[whichTree][node].up[0]].bl = midpoint - tree[whichTree][tipB].distanceFromRoot;
+			//tree[whichTree][tree[whichTree][node].up[1]].bl = tree[whichTree][tipA].distanceFromRoot - midpoint;
+			tree[whichTree][tree[whichTree][node].up[1]].bl = midpoint - tree[whichTree][tipA].distanceFromRoot;
+		}else{
+			tree[whichTree][tree[whichTree][node].up[1]].bl = midpoint - tree[whichTree][tipB].distanceFromRoot;
+			tree[whichTree][tree[whichTree][node].up[0]].bl = midpoint - tree[whichTree][tipA].distanceFromRoot;
+		}
+	}else{
+		int leftOrRight = findLeftOrRight(tree,whichTree,tipA,tree[whichTree][node].up[0]);
+		if (leftOrRight == 1){
+			tree[whichTree][tree[whichTree][node].up[0]].bl = midpoint - tree[whichTree][tipA].distanceFromRoot;
+			tree[whichTree][tree[whichTree][node].up[1]].bl = midpoint - tree[whichTree][tipB].distanceFromRoot;
+		}else{
+			tree[whichTree][tree[whichTree][node].up[1]].bl = midpoint - tree[whichTree][tipA].distanceFromRoot;
+			tree[whichTree][tree[whichTree][node].up[0]].bl = midpoint - tree[whichTree][tipB].distanceFromRoot;
+		}
+	}
+	calculateTotalDistanceFromRoot(node,0.0,whichTree);
+	//int max_lca = -1;
+	//max_lca = findLCA(tree,tipA,tipB,whichTree);
+	/*if (max_lca != node){
+		node = rotateTree(tree,whichTree,max_lca,node,number_of_nodes);
+		tree[whichTree][node].depth =0;
+		tree[whichTree][node].bl = 0.0;
+		assignDepth(tree,tree[whichTree][node].up[0],tree[whichTree][node].up[1],1,whichTree);
+		calculateTotalDistanceFromRoot(node,0.0,whichTree);
+	}*/
+	/*if ( tree[whichTree][tipA].distanceFromRoot > tree[whichTree][tipB].distanceFromRoot){
+		int leftOrRight =-1;
+		leftOrRight = findLeftOrRight(tree,whichTree,tipA,tree[whichTree][node].up[0]);
+		double length_to_be_added = 0;
+		if (leftOrRight == 1){
+			length_to_be_added = tree[whichTree][tipA].distanceFromRoot - midpoint;
+			int stop = 0;
+			int start_node = tree[whichTree][node].up[0];
+			while(stop==0){
+				if ( tree[whichTree][start_node].bl - length_to_be_added < 0 ){
+					length_to_be_added = length_to_be_added - tree[whichTree][start_node].bl;
+					int leftOrRight2 = -1;
+					leftOrRight2 = findLeftOrRight(tree,whichTree,tipA,tree[whichTree][start_node].up[0]);
+					if (leftOrRight2 == 1){
+						start_node = tree[whichTree][start_node].up[0];
+					}else{
+						start_node = tree[whichTree][start_node].up[1];
+					}
+				}else{
+					stop=1;
+				}
+			}
+			if ( start_node == tree[whichTree][node].up[0] ){
+				tree[whichTree][tree[whichTree][node].up[0]].bl = tree[whichTree][tree[whichTree][node].up[0]].bl - length_to_be_added;
+				tree[whichTree][tree[whichTree][node].up[1]].bl = tree[whichTree][tree[whichTree][node].up[1]].bl + length_to_be_added;
+			}else{
+				node = rotateTree(tree,whichTree,start_node,node,number_of_nodes);
+				tree[whichTree][node].bl = 0.0;
+				int leftOrRight2 = -1;
+				leftOrRight2 = findLeftOrRight(tree,whichTree,tipA,tree[whichTree][node].up[0]);
+				if (leftOrRight2 == 1){
+					tree[whichTree][tree[whichTree][node].up[0]].bl = tree[whichTree][tree[whichTree][node].up[0]].bl - length_to_be_added;
+					tree[whichTree][tree[whichTree][node].up[1]].bl = tree[whichTree][tree[whichTree][node].up[1]].bl + length_to_be_added;
+				}else{
+					tree[whichTree][tree[whichTree][node].up[1]].bl = tree[whichTree][tree[whichTree][node].up[1]].bl - length_to_be_added;
+					tree[whichTree][tree[whichTree][node].up[0]].bl = tree[whichTree][tree[whichTree][node].up[0]].bl + length_to_be_added;
+				}
+			}
+		}else{
+			length_to_be_added = tree[whichTree][tipA].distanceFromRoot - midpoint;
+			int stop = 0;
+			int start_node = tree[whichTree][node].up[1];
+			while(stop==0){
+				if ( tree[whichTree][start_node].bl - length_to_be_added < 0 ){
+					length_to_be_added = length_to_be_added - tree[whichTree][start_node].bl;
+					int leftOrRight2 = -1;
+					leftOrRight2 = findLeftOrRight(tree,whichTree,tipA,tree[whichTree][start_node].up[0]);
+					if (leftOrRight2 == 1){
+						start_node = tree[whichTree][start_node].up[0];
+					}else{
+						start_node = tree[whichTree][start_node].up[1];
+					}
+				}else{
+					stop=1;
+				}
+			}
+			if ( start_node == tree[whichTree][node].up[1] ){
+				tree[whichTree][tree[whichTree][node].up[1]].bl = tree[whichTree][tree[whichTree][node].up[1]].bl - length_to_be_added;
+				tree[whichTree][tree[whichTree][node].up[0]].bl = tree[whichTree][tree[whichTree][node].up[0]].bl + length_to_be_added;
+			}else{
+				node = rotateTree(tree,whichTree,start_node,node,number_of_nodes);
+				tree[whichTree][node].bl = 0.0;
+				int leftOrRight2 = -1;
+				leftOrRight2 = findLeftOrRight(tree,whichTree,tipA,tree[whichTree][node].up[0]);
+				if (leftOrRight2 == 1){
+					tree[whichTree][tree[whichTree][node].up[0]].bl = tree[whichTree][tree[whichTree][node].up[0]].bl - length_to_be_added;
+					tree[whichTree][tree[whichTree][node].up[1]].bl = tree[whichTree][tree[whichTree][node].up[1]].bl + length_to_be_added;
+				}else{
+					tree[whichTree][tree[whichTree][node].up[1]].bl = tree[whichTree][tree[whichTree][node].up[1]].bl - length_to_be_added;
+					tree[whichTree][tree[whichTree][node].up[0]].bl = tree[whichTree][tree[whichTree][node].up[0]].bl + length_to_be_added;
+				}
+			}
+		}
+	}else{
+		int leftOrRight =-1;
+		leftOrRight = findLeftOrRight(tree,whichTree,tipB,tree[whichTree][node].up[0]);
+		double length_to_be_added = 0;
+		if (leftOrRight == 1){
+			length_to_be_added = tree[whichTree][tipB].distanceFromRoot - midpoint;
+			tree[whichTree][tree[whichTree][node].up[0]].bl = tree[whichTree][tree[whichTree][node].up[0]].bl - length_to_be_added;
+			tree[whichTree][tree[whichTree][node].up[1]].bl = tree[whichTree][tree[whichTree][node].up[1]].bl + length_to_be_added;
+		}else{
+			length_to_be_added = tree[whichTree][tipB].distanceFromRoot - midpoint;
+			tree[whichTree][tree[whichTree][node].up[1]].bl = tree[whichTree][tree[whichTree][node].up[1]].bl - length_to_be_added;
+			tree[whichTree][tree[whichTree][node].up[0]].bl = tree[whichTree][tree[whichTree][node].up[0]].bl + length_to_be_added;
+		}
+	}
+	calculateTotalDistanceFromRoot(node,0.0,whichTree);*/
+	//if ( tree[whichTree][node].up[0] == prev ){
+		//reRoot(tree,node,tree[whichTree][node].up[1],whichTree,number_of_nodes,tree[whichTree][node].depth);
+		//rotateTree(tree,whichTree,node,tree[whichTree][node].up[1],tree[whichTree][node].depth,number_of_nodes);
+		
+	//}else {
+		//rotateTree(tree,whichTree,node,tree[whichTree][node].up[0],tree[whichTree][node].depth,number_of_nodes);
+		//reRoot(tree,node,tree[whichTree][node].up[0],whichTree,number_of_nodes,tree[whichTree][node].depth);
+	//}
+	//tree[whichTree][node].down =-1;
+	return node;
+}
+int findLongestTipToTip(node** tree, int number_of_leaves, int whichTree, int root){
+	int i,j;
+	double max_distance = 0;
+	int tipA=-1;
+	int tipB=-2;
+	int lca_max = -1;
+	for(i=0; i<number_of_leaves; i++){
+		for(j=i+1; j<number_of_leaves; j++){
+			int lca = findLCA(tree,i,j,whichTree);
+			double lengthA=0;
+			double lengthB=0;
+			lengthA=findLengthToLCA(tree,i,lca,0,whichTree);
+			lengthB=findLengthToLCA(tree,j,lca,0,whichTree);
+			if (lengthA + lengthB > max_distance){
+				max_distance = lengthA + lengthB;
+				tipA = i;
+				tipB = j;
+				lca_max = lca;
+				//printf("lengthA: %lf\nlengthB: %lf\n",lengthA,lengthB);
+			}
+		}
+	}
+	//double midpoint = tree[whichTree][tree[whichTree][lca_max].up[0]].bl + tree[whichTree][tree[whichTree][lca_max].up[1]].bl;
+	double midpoint = max_distance;
+	midpoint = midpoint/2;
+	int new_root=-1;
+	if ( tree[whichTree][tipA].distanceFromRoot - tree[whichTree][lca_max].distanceFromRoot > tree[whichTree][tipB].distanceFromRoot -tree[whichTree][lca_max].distanceFromRoot){
+		new_root=findMidpoint(tree,tipA,midpoint,whichTree,number_of_leaves,root,lca_max,tipB,(tree[whichTree][tipA].distanceFromRoot -tree[whichTree][lca_max].distanceFromRoot)-midpoint);
+	}else{
+		new_root=findMidpoint(tree,tipB,midpoint,whichTree,number_of_leaves,root,lca_max,tipA,(tree[whichTree][tipB].distanceFromRoot - tree[whichTree][lca_max].distanceFromRoot)-midpoint);
+	}
+	//findMidpoint(tree,tipA,midpoint,whichTree);
+	//tree[whichTree][tree[whichTree][lca_max].up[0]].bl = lengths_of_desc;
+	//tree[whichTree][tree[whichTree][lca_max].up[1]].bl = lengths_of_desc;
+	//if (tree[whichTree][lca_max].down != -1){
+	//	reRoot(tree, lca_max, tree[whichTree][lca_max].down, whichTree);
+	//	tree[whichTree][lca_max].down = -1;
+	//	tree[whichTree][lca_max].bl = -1;
+	//}
+	//printf("tipA is %d and tipB is %d and lca is %d and new_root is %d\n",tipA,tipB,lca_max,new_root);
+	//printf("max distance is %lf\n",max_distance);
+	printf("tipA distanceFR: %lf tipB distanceFR: %lf\n",tree[whichTree][tipA].distanceFromRoot,tree[whichTree][tipB].distanceFromRoot);
+	assert(tree[whichTree][tipB].distanceFromRoot-tree[whichTree][tipA].distanceFromRoot < 0.001 && tree[whichTree][tipB].distanceFromRoot-tree[whichTree][tipA].distanceFromRoot > -0.001);
+	return new_root;
+}
 void calculateDistance(node** tree, int leaf, int LCA,double* distance){
 	if (leaf==LCA){ return;
 	}else{
@@ -2128,16 +2942,16 @@ void calculateDistance(node** tree, int leaf, int LCA,double* distance){
 		calculateDistance(tree,tree[0][leaf].down,LCA,distance);
 	}
 }
-int findLCA(node** tree, int nodeA, int nodeB){
+int findLCA(node** tree, int nodeA, int nodeB, int whichTree){
 	if (nodeA == nodeB){ return nodeA; }
-	if (tree[0][nodeA].depth > tree[0][nodeB].depth){
+	if (tree[whichTree][nodeA].depth > tree[whichTree][nodeB].depth){
 		int tmp = nodeA;
 		nodeA = nodeB;
 		nodeB = tmp;
 	}
-	if ( tree[0][nodeB].down == -1 ){ return nodeB; }
-	nodeB = tree[0][nodeB].down;
-	return findLCA(tree,nodeA,nodeB);
+	if ( tree[whichTree][nodeB].down == -1 ){ return nodeB; }
+	nodeB = tree[whichTree][nodeB].down;
+	return findLCA(tree,nodeA,nodeB,whichTree);
 }
 void findLeaves(node** tree, int node, int whichTree, int* parentCuts, /*int** clusterarr,*/ char*** cluster_seqs, int number_of_sequences){
 	int child1 = tree[whichTree][node].up[0];
@@ -2313,6 +3127,7 @@ void createTreesForClusters(node** treeArr, int number_of_clusters, int* cluster
 	int j=0;
 	int k=0;
 	for(i=1; i<number_of_clusters; i++){
+		if (clusterSize[i] > 3){
 		distMat = (double **)malloc((clusterSize[i]+1)*sizeof(double *));
 		for(j=0; j<clusterSize[i]+1; j++){
 			distMat[j] = (double *)malloc((clusterSize[i]+1)*sizeof(double));
@@ -2323,13 +3138,28 @@ void createTreesForClusters(node** treeArr, int number_of_clusters, int* cluster
 			}
 		}
 		createDistMat_WFA(cluster_seqs[i],distMat,clusterSize[i],threads);
-		if ( clusterSize[i] > 3 ){
+		//}
+		//if ( clusterSize[i] > 3 ){
 			rootArr[i-1] = NJ(treeArr,distMat,clusterSize[i],i-1,i);
+			treeArr[i-1][rootArr[i-1]].bl = 0;
+			treeArr[i-1][rootArr[i-1]].depth = 0;
+			assignDepth(treeArr,treeArr[i-1][rootArr[i-1]].up[0],treeArr[i-1][rootArr[i-1]].up[1],1,i-1);
+			calculateTotalDistanceFromRoot(rootArr[i-1],0.0,i-1);
+			//printtree(treeArr, i-1, clusterSize[i]);
+			//FILE* beforetree = fopen("before.nw","w");
+			//printtree_newick(rootArr[i-1],i-1,beforetree);
+			rootArr[i-1]=findLongestTipToTip(treeArr,clusterSize[i],i-1,rootArr[i-1]);
+			//printtree(treeArr, i-1, clusterSize[i]);
+			//FILE* aftertree = fopen("after.nw","w");
+			//printtree_newick(rootArr[i-1],i-1,aftertree);
 		}else{
 			rootArr[i-1]=0;
 		}
-		for(j=0; j<clusterSize[i]+1; j++){
-			free(distMat[j]);
+		if (clusterSize[i] > 3){
+			for(j=0; j<clusterSize[i]+1; j++){
+				free(distMat[j]);
+			}
+			free(distMat);
 		}
 	}
 }
@@ -2911,11 +3741,11 @@ void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int w
 	//}
 	//}
 	//for(i=0;i<numberOfRoots;i++){
-		//printf("Root Sequence %d\t",i);
-		//for(j=0;j<numbase;j++){
-		//	printf("%c",rootSeqs[whichRoot][j]);
-		//}
-		//printf("\n");
+		printf("Root Sequence: ");
+		for(j=0;j<numbase;j++){
+			printf("%c",rootSeqs[whichRoot][j]);
+		}
+		printf("\n");
 	//}
 }
 void swap(int* xp, int* yp){
@@ -3088,13 +3918,13 @@ int readInXNumberOfLines(int numberOfLinesToRead, gzFile query_reads, int* assig
 	free(query);
 	return countLines;
 }
-void calculateTotalDistanceFromRoot(node** tree, int node, double distance){
-	int child1 = tree[0][node].up[0];
-	int child2 = tree[0][node].up[1];
-	tree[0][node].distanceFromRoot = distance + tree[0][node].bl;
+void calculateTotalDistanceFromRoot(int node, double distance,int whichTree){
+	int child1 = treeArr[whichTree][node].up[0];
+	int child2 = treeArr[whichTree][node].up[1];
+	treeArr[whichTree][node].distanceFromRoot = distance + treeArr[whichTree][node].bl;
 	if ( child1 != -1 && child2 != -1){
-		calculateTotalDistanceFromRoot(tree,child1,distance + tree[0][node].bl);
-		calculateTotalDistanceFromRoot(tree,child2,distance + tree[0][node].bl);
+		calculateTotalDistanceFromRoot(child1,distance + treeArr[whichTree][node].bl,whichTree);
+		calculateTotalDistanceFromRoot(child2,distance + treeArr[whichTree][node].bl,whichTree);
 	}
 }
 double calculateAverageDistanceBetweenClusters(node** tree, int number_of_leaves, int number_of_clusters, double** distMatForAVG){
@@ -3167,7 +3997,7 @@ void assignClusters(int number_of_clusters, node** tree, int node){
 int main(int argc, char **argv){
 	Options opt;
 	opt.number_of_clusters = 10;
-	opt.number_of_kseqs=50;
+	opt.number_of_kseqs=100;
 	opt.slash=0;
 	opt.default_directory=1;
 	opt.numthreads=1;
@@ -3175,6 +4005,7 @@ int main(int argc, char **argv){
 	opt.output_fasta=0;
 	opt.clstr_format=1;
 	opt.use_nw=0;
+	opt.number_of_desc=10;
 	opt.numberOfLinesToRead=10000;
 	strcpy(opt.output_directory,"");
 	memset(opt.output_file,'\0',2000);
@@ -3184,14 +4015,14 @@ int main(int argc, char **argv){
 	int number_of_sequences = 0;
 	int* fasta_specs = (int *)malloc(4*sizeof(int));
 	setNumSeq(fasta_for_clustering,fasta_specs);
+	printf("Number of sequences: %d\n",fasta_specs[0]);
+	//printf("Longest sequence: %d\n",fasta_specs[1]);
+	//printf("Longest name: %d\n",fasta_specs[2]);
 	if (opt.number_of_clusters > fasta_specs[0] || opt.number_of_clusters < 2){
 		printf("please enter a number of clusters > 1 and less than the number of sequences provided\n");
 		exit(1);
 	}
 	fasta_specs[3] = opt.number_of_clusters+1; //NUMBER OF CLUSTERS
-	printf("Number of sequences: %d\n",fasta_specs[0]);
-	//printf("Longest sequence: %d\n",fasta_specs[1]);
-	//printf("Longest name: %d\n",fasta_specs[2]);
 	printf("Number of clusters: %d\n",fasta_specs[3]-1);
 	fclose(fasta_for_clustering);
 	printf("Number of threads: %d\n",opt.numthreads);
@@ -3256,6 +4087,7 @@ int main(int argc, char **argv){
 	//numberOfUnAssigned=0;
 	int* sequencesToClusterLater = (int *)malloc((fasta_specs[0]-kseqs)*sizeof(int));
 	double lastTime=0;
+	double average_of_cut_branch_lengths=0;
 	while(numberOfUnAssigned>3){
 	//printf("starting number of clusters: %d\n",starting_number_of_clusters);
 	//struct hashmap seqsToCompare;
@@ -3417,8 +4249,8 @@ int main(int argc, char **argv){
 	free(distMat);
 	tree[0][root].bl=0;
 	get_number_descendants(tree,root,0);
-	assignDepth(tree,tree[0][root].up[0],tree[0][root].up[1],1);
-	calculateTotalDistanceFromRoot(tree,root,0);
+	assignDepth(tree,tree[0][root].up[0],tree[0][root].up[1],1,0);
+	//calculateTotalDistanceFromRoot(tree,root,0,0);
 	double* branchLengths = (double *)malloc((2*kseqs-1)*sizeof(double));
 	for(i=0; i<2*kseqs-1; i++){
 		branchLengths[i] = tree[0][i].bl;
@@ -3431,12 +4263,18 @@ int main(int argc, char **argv){
 	//if ( numberOfUnAssigned == fasta_specs[0] ){
 	for(i=0; i<2*kseqs-1; i++){
 		//if (tree[0][indexArray[i]].nd > 1 && numberOfNodesToCut < opt.number_of_clusters-1){
-		if ( numberOfNodesToCut < opt.number_of_clusters-1 && tree[0][indexArray[i]].nd > 10){
+		if ( numberOfNodesToCut < opt.number_of_clusters-1 && tree[0][indexArray[i]].nd > opt.number_of_desc){
 		//if ( tree[0][indexArray[i]].bl > 0.03 && tree[0][indexArray[i]].nd > 1){
 			//printf("cutting at node %d\n",indexArray[i]);
 			numberOfNodesToCut++;
 			//printdescendants(tree,indexArray[i],numberOfNodesToCut,0,kseqs);
 			tree[0][indexArray[i]].nodeToCut=1;
+			if ( numberOfUnAssigned == fasta_specs[0] ){
+				average_of_cut_branch_lengths = average_of_cut_branch_lengths + tree[0][indexArray[i]].bl;
+			}else if ( numberOfUnAssigned < fasta_specs[0] && tree[0][indexArray[i]].bl < average_of_cut_branch_lengths ){
+				numberOfNodesToCut--;
+				tree[0][indexArray[i]].nodeToCut=0;
+			}
 			//clearDescendants(tree,tree[0][indexArray[i]].up[0],0);
 			//clearDescendants(tree,tree[0][indexArray[i]].up[1],0);
 			//updateNumberOfDescendants(tree,indexArray[i],tree[0][indexArray[i]].nd,0);
@@ -3444,6 +4282,10 @@ int main(int argc, char **argv){
 			//printf("updating tree\n");
 		}
 	}
+	if ( numberOfUnAssigned == fasta_specs[0] ){
+		average_of_cut_branch_lengths = average_of_cut_branch_lengths/numberOfNodesToCut;
+	}
+	printf("Average of cut branch lengths: %lf\n",average_of_cut_branch_lengths);
 	//}
 	/*if ( numberOfUnAssigned <fasta_specs[0]){
 		for(i=0; i<2*kseqs-1; i++){
@@ -3703,9 +4545,11 @@ int main(int argc, char **argv){
 			free(treeArr[i][rootArr[i]].posteriornc);
 			free(treeArr[i]);
 		}else{
-			numbase[i] = strlen(cluster_seqs[i+1][0]);
+			int random_number = generateRandom(clusterSize[i+1]-1);
+			//printf("random: %d clusterSize: %d\n",random_number,clusterSize[i+1]);
+			numbase[i] = strlen(cluster_seqs[i+1][random_number]);
 			rootSeqs[i]=(char *)malloc((numbase[i]+1)*(sizeof(char)));
-			strcpy(rootSeqs[i],cluster_seqs[i+1][0]);
+			strcpy(rootSeqs[i],cluster_seqs[i+1][random_number]);
 		}
 	}
 	free(rootArr);
