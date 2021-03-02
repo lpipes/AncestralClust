@@ -1439,12 +1439,10 @@ void printLessThanFour(gzFile fasta_to_assign, int numberOfUnassigned, Options o
 		fprintf(clusterFile,"%s\n",actualSeqsToPrint[i]);
 		fclose(clusterFile);
 	}	
-	if (opt.hasTaxFile==1){
-		for(i=0; i<numberOfUnassigned; i++){
-			free(taxfiles[i]);
-		}
-		free(taxfiles);
+	for(i=0; i<numberOfUnassigned; i++){
+		free(taxfiles[i]);
 	}
+	free(taxfiles);
 }
 void printLessThanFour_CLSTR(int numberOfUnAssigned, char*** clstr, int** clstr_lengths, int max_length, char** seqsToPrint, char** actualSeqsToPrint){
 	int i,j;
@@ -1668,7 +1666,7 @@ void saveForLater(int index, resultsStruct *results, int sizeOfChunk, int iterat
 		}
 	}
 	//strcpy(results->savedForNewClusters[i+1],accToSave);
-	results->savedForNewClusters[place]=index+iteration/2+index_in_original_file;
+	results->savedForNewClusters[place]=index+iteration+index_in_original_file;
 }
 int perform_WFA_alignment(affine_wavefronts_t* affine_wavefronts, mm_allocator_t* mm_allocator,char* seq1, char* seq2,char* const pattern_alg,char* const text_alg){
 	int k, alg_pos =0, pattern_pos= 0, text_pos =0;
@@ -1733,7 +1731,7 @@ void *runAssignToCluster(void *ptr){
 	int end=mstr->end;
 	int num_threads = mstr->num_threads;
 	int sizeOfChunk=end-start;
-	//printf("sizeOfChunk is %d\n",sizeOfChunk);
+	printf("sizeOfChunk is %d\n",sizeOfChunk);
 	double average = mstr->average;
 	//double average = 0.2;
 	int number_of_clusters = mstr->number_of_clusters;
@@ -2931,7 +2929,7 @@ int findLongestTipToTip(node** tree, int number_of_leaves, int whichTree, int ro
 	//}
 	//printf("tipA is %d and tipB is %d and lca is %d and new_root is %d\n",tipA,tipB,lca_max,new_root);
 	//printf("max distance is %lf\n",max_distance);
-	printf("tipA distanceFR: %lf tipB distanceFR: %lf\n",tree[whichTree][tipA].distanceFromRoot,tree[whichTree][tipB].distanceFromRoot);
+	//printf("tipA distanceFR: %lf tipB distanceFR: %lf\n",tree[whichTree][tipA].distanceFromRoot,tree[whichTree][tipB].distanceFromRoot);
 	assert(tree[whichTree][tipB].distanceFromRoot-tree[whichTree][tipA].distanceFromRoot < 0.001 && tree[whichTree][tipB].distanceFromRoot-tree[whichTree][tipA].distanceFromRoot > -0.001);
 	return new_root;
 }
@@ -3717,7 +3715,7 @@ void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int w
 	//for(i=0; i<numberOfRoots;i++){
 	//printf("NUMBASE: %d\n",numbase);
 	//if ( clusterSize[i+1] > 3){
-	for(j=0;j<numbase;j++){
+	for(i=0;j<numbase;j++){
 		//minimum=PP[i][rootArr[i]][j][0];
 		minimum=1.0-treeArr[whichRoot][root].posteriornc[j][0];
 		index=0;
@@ -3774,23 +3772,39 @@ void saveChooseKSeq( FILE* fasta, int* chooseK, char*** clusters, char*** cluste
 	int k=0;
 	char *s;
 	int size;
+	int last_size=0;
+	int save_on=0;
 	while( fgets(buffer,maximum_seq,fasta) != NULL ){
 		s = strtok(buffer,"\n");
+		if (s != NULL){
 		size=strlen(s);
-		if ( buffer[0] == '>' && i==chooseK[k]*2 ){
+		if ( buffer[0] == '>' && i==chooseK[k] ){
+			if (k != 0){
+				last_size=strlen(cluster_seqs[0][k-1]);
+				cluster_seqs[0][k-1][last_size]='\0';
+			}
+			if (k==kseqs){
+				break;
+			}
 			for(j=1;j<size;j++){
 				clusters[0][k][j-1]=buffer[j];
 			}
 			clusters[0][k][j-1] = '\0';
-		}else if ( i==chooseK[k]*2+1 ){
-			for(j=0;j<size;j++){
-				cluster_seqs[0][k][j]=buffer[j];
-			}
-			cluster_seqs[0][k][j]='\0';
+			i++;
 			k++;
+			save_on=1;
+		}else if ( buffer[0] == '>' ){
+			i++;
+			save_on=0;
+		}else if ( save_on == 1 ){
+			last_size=strlen(cluster_seqs[0][k-1]);
+			int buffer_index=0;
+			for(j=last_size;j<last_size+size;j++){
+				cluster_seqs[0][k-1][j]=buffer[buffer_index];
+				buffer_index++;
+			}
 		}
-		if (k==kseqs){ break; }
-		i++;
+		}
 	}
 }
 int readInTaxonomy(int numberOfLinesToRead, FILE* taxonomy_file, int* assignedReads){
@@ -3840,7 +3854,7 @@ int readInXNumberOfLines(int numberOfLinesToRead, gzFile query_reads, int* assig
 		return 0;
 	}
 	for(k=0; k<kseqs; k++){
-		if ( iter <= 2*assignedReads[k] ){
+		if ( iter <= assignedReads[k] ){
 			break;
 		}
 	}
@@ -3850,7 +3864,7 @@ int readInXNumberOfLines(int numberOfLinesToRead, gzFile query_reads, int* assig
 	int m=0;
 	int countLines=0;
 	int n=k;
-	int lineNumber=iter/2;
+	int lineNumber=iter;
 	char* accession;
 	char* lineTaxonomy;
 	int j=0;
@@ -3877,48 +3891,62 @@ int readInXNumberOfLines(int numberOfLinesToRead, gzFile query_reads, int* assig
 		lineNumber++;
 	}
 	}
+	int save_seq=0;
 	while(gzgets(query_reads,buffer,max_read_length)!=NULL){
 		s = strtok(buffer,"\n");
-		size = strlen(s);
 		countLines++;
-		if (k <= kseqs && iter != assignedReads[k]*2 && assignedSeqs[iter/2] == -1 && buffer[0] == '>'){
-			for(i=1; i<size; i++){
-				seqname[i-1]=buffer[i];
+		if ( s != NULL ){
+			size = strlen(s);
+			if (k <= kseqs && iter != assignedReads[k] && assignedSeqs[iter] == -1 && buffer[0] == '>'){
+				for(i=1; i<size; i++){
+					seqname[i-1]=buffer[i];
+				}
+				seqname[i-1] = '\0';
+				strcpy(readsStruct->name[refresh],seqname);
+				for (i=0; i<max_read_name+1; i++){
+					seqname[i]='\0';
+				}
+				iter++;
+				refresh++;
+				save_seq=1;
+				skipped[m]=1;
+				m++;
+			}else if ( save_seq == 1 && buffer[0] != '>' && assignedSeqs[iter-1] == -1){
+				for(i=0; i<size; i++){
+					query[i]=toupper(buffer[i]);
+				}
+				query[size]='\0';
+				int last_size=0;
+				if ( readsStruct->sequence[refresh-1][0] != '\0' ){
+					last_size=strlen(readsStruct->sequence[refresh-1]);
+				}
+				int buffer_index=0;
+				for(i=last_size; i<last_size+size; i++){
+					readsStruct->sequence[refresh-1][i] = query[buffer_index];
+					buffer_index++;
+				}
+				if( size < 100 && refresh==numberOfLinesToRead && last_size != 0){
+					break;
+				}else if ( last_size == 0 && size > 100 && refresh==numberOfLinesToRead ){
+					break;
+				}
+			}else if ( k <= kseqs && iter == assignedReads[k] && buffer[0] == '>'){
+				save_seq=0;
+				k++;
+				iter++;
+				skipped[m]=-1;
+				m++;
+			}else if ( buffer[0] == '>'){
+				iter++;
+				save_seq=0;	
+			}else{
+				save_seq=0;
 			}
-			seqname[i-1] = '\0';
-			iter++;
-		}else if ( k <= kseqs && iter != assignedReads[k]*2+1 && assignedSeqs[iter/2] == -1 ){
-			for(i=0; i<size; i++){
-				query[i]=toupper(buffer[i]);
-			}
-			query[size]='\0';
-			strcpy(readsStruct->sequence[refresh],query);
-			strcpy(readsStruct->name[refresh],seqname);
-			for(i=0; i<size; i++){
-				query[i] = '\0';
-			}
-			refresh++;
-			iter++;
-			skipped[m]=1;
-			m++;
-			for (i=0; i<max_read_name+1; i++){
-				seqname[i]='\0';
-			}
-			if(refresh==numberOfLinesToRead){
-				break;
-			}
-		}else if ( k <= kseqs && iter == assignedReads[k]*2+1 && iter % 2 == 1){
-			k++;
-			iter++;
-			skipped[m]=-1;
-			m++;
-		}else{
-			iter++;
 		}
 	}
 	free(buffer);
 	free(query);
-	return countLines;
+	return iter;
 }
 void calculateTotalDistanceFromRoot(int node, double distance,int whichTree){
 	int child1 = treeArr[whichTree][node].up[0];
@@ -4039,7 +4067,6 @@ int main(int argc, char **argv){
 	//if (( fasta_for_clustering = fopen(opt.fasta,"r")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
 	//readInFasta(fasta_for_clustering,seqNames,sequences);
 	//fclose(fasta_for_clustering);
-	if ( fasta_specs[0] < opt.number_of_kseqs ){  opt.number_of_kseqs = fasta_specs[0]; }
 	int kseqs = opt.number_of_kseqs;
 	char** taxonomy;
 	FILE* taxonomyFile;
@@ -4894,12 +4921,12 @@ int main(int argc, char **argv){
 		endOfAssign = numberOfUnAssigned;
 	}
 	readsStruct = malloc(sizeof(struct readsToAssign));
-	readsStruct->sequence = (char **)malloc(sizeof(char *)*numberToAssign/2);
-	readsStruct->name = (char **)malloc(sizeof(char *)*numberToAssign/2);
+	readsStruct->sequence = (char **)malloc(sizeof(char *)*numberToAssign);
+	readsStruct->name = (char **)malloc(sizeof(char *)*numberToAssign);
 	if (opt.hasTaxFile==1){
-		readsStruct->taxonomy = (char **)malloc(sizeof(char *)*numberToAssign/2);
+		readsStruct->taxonomy = (char **)malloc(sizeof(char *)*numberToAssign);
 	}
-	for(i=0; i<numberToAssign/2; i++){
+	for(i=0; i<numberToAssign; i++){
 		readsStruct->sequence[i] = (char *)malloc(sizeof(char)*(fasta_specs[1]+1));
 		readsStruct->name[i] = (char *)malloc(sizeof(char)*(fasta_specs[2]+1));
 		memset(readsStruct->sequence[i],'\0',fasta_specs[1]+1);
@@ -4963,18 +4990,17 @@ int main(int argc, char **argv){
 		for(i=0; i<fasta_specs[0]; i++){
 			skipped[i]=0;
 		}
-		returnLineNumber=readInXNumberOfLines(numberToAssign/2, fasta_to_assign, chooseK, fasta_specs[2]+1, fasta_specs[1]+1, iter, kseqs,skipped,assignedSeqs,fasta_specs,taxonomy_file,opt);
-		//readInTaxonomy(numberToAssign/2, taxonomy_file, chooseK);
+		returnLineNumber=readInXNumberOfLines(numberToAssign, fasta_to_assign, chooseK, fasta_specs[2]+1, fasta_specs[1]+1, iter, kseqs,skipped,assignedSeqs,fasta_specs,taxonomy_file,opt);
 		if (returnLineNumber==0){
 			break;
 		}
-		for(i=0; i<numberToAssign/2; i++){
+		for(i=0; i<numberToAssign; i++){
 			if ( readsStruct->name[i][0] == '\0' ){
 				divideFile=i;
 				break;
 			}
 		}
-		if ( i == numberToAssign/2 ){
+		if ( i == numberToAssign ){
 			divideFile=i;
 		}
 		int endDivideFile = divideFile;
@@ -5035,14 +5061,14 @@ int main(int argc, char **argv){
 			//}
 
 		}
-		for(i=0; i<numberToAssign/2; i++){
+		for(i=0; i<numberToAssign; i++){
 			memset(readsStruct->sequence[i],'\0',fasta_specs[1]+1);
 			memset(readsStruct->name[i],'\0',fasta_specs[2]+1);
 			if (opt.hasTaxFile==1){
 				memset(readsStruct->taxonomy[i],'\0',FASTA_MAXLINE);
 			}
 		}
-		iter = iter + returnLineNumber;
+		iter = returnLineNumber;
 
 	}
 	gzclose(fasta_to_assign);
@@ -5056,7 +5082,7 @@ int main(int argc, char **argv){
 		if (sequencesToClusterLater[l]==-1){ break; }
 		assignedSeqs[sequencesToClusterLater[l]]=-1;
 	}
-	for(i=0; i<numberToAssign/2; i++){
+	for(i=0; i<numberToAssign; i++){
 		free(readsStruct->sequence[i]);
 		free(readsStruct->name[i]);
 		if (opt.hasTaxFile==1){
