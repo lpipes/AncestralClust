@@ -35,8 +35,9 @@ The only required argument is the -i, --infile which is a FASTA file to be clust
 FASTA_header\tdomain;phylum;class;order;family;genus;species
 
 # Performance
-AncestralClust tends to have more even clusters (as measured by the coefficient of variation) with fewer relative incompatibilities for every taxonomic level than leading clustering software UCLUST.
-<img src="https://github.com/lpipes/AncestralClust/blob/master/Relative_COI.png?raw=true">
+AncestralClust tends to have more even clusters (as measured by the Coefficient of Variation) with higher relative NMI for every taxonomic level than leading clustering software UCLUST measured from three different metabarcode libraries (16S, 18S, and COI).
+<img src="https://github.com/lpipes/AncestralClust/blob/master/RelativeNMI_species.png?raw=true">
 
 # Citation
+Pipes L, and Nielsen R (2021) AncestralClust: Clustering of Divergent Nucleotide Sequences by Ancestral Sequence Reconstruction using Phylogenetic Trees. biorxiv. 
 <a href="https://www.biorxiv.org/content/10.1101/2021.01.08.426008v1">https://www.biorxiv.org/content/10.1101/2021.01.08.426008v1</a>
