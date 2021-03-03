@@ -5,18 +5,18 @@ AncestralClust was developed to cluster divergent sequences. A neighbor-joining 
 
 ancestralclust [OPTIONS]
 	
-	-h, --help			usage: -i file.fasta
-	-i, --infile [REQUIRED]		fasta to cluster
-	-t, --infile_taxonomy		taxonomy of fasta to cluster [sorted in same order as fasta]
-	-n, --number_of_clusters	number of initial clusters [default: 10]
-	-k, --number_of_sequences	number of sequences in initial cluster [default: 100]
-	-d, --directory			directory to print clusters [directory must exist]
-	-c, --threads			number of threads
-	-o, --output_file		output file
-	-f, --fasta_format		output fasta files for each cluster
-	-u, --use_nw			use Needleman-Wunsch [default is WFA]
-	-l, --number_of_lines_to_read	number of lines to read in from file
-	-p, --number_of_descendants	number of descendants to require to cut branch [default: 10]	
+	-h, --help				usage: -i [Input FASTA] -r [Integer <= Number of Sequences] -k [Integer > 1]
+	-i, --infile [REQUIRED]			fasta to cluster
+	-t, --infile_taxonomy [OPTIONAL]	taxonomy of fasta [Sorted in same order as FASTA, not used in clustering]
+	-k, --number_of_clusters [REQUIRED]	number of initial clusters [default: 10]
+	-r, --number_of_sequences [REQUIRED]	number of sequences in initial cluster [default: 100]
+	-d, --directory				directory to print clusters [DIRECTORY MUST EXIST PRIOR TO RUNNING]
+	-c, --threads				number of threads [default: 1]
+	-o, --output_file			output file
+	-f, --fasta_format			output fasta files for each cluster
+	-u, --use_nw				use Needleman-Wunsch [default is WFA]
+	-l, --number_of_lines_to_read		number of lines to read in from file
+	-p, --number_of_descendants		number of descendants to require to cut branch [default: 10]
 
 AncestralClust uses <a href="https://github.com/TimoLassmann/kalign">kalign3</a> to construct multiple sequence alignments, <a href="https://github.com/smarco/WFA">wavefront alignment algorithm</a> for pairwise alignments, and <a href="https://github.com/noporpoise/seq-align">needleman-wunsch alignment</a> for pairwise alignments if chosen by the user, and <a href="https://github.com/DavidLeeds/hashmap">David Leeds' hashmap</a> for taxonomy files if user chooses.
 
