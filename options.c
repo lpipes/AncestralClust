@@ -20,18 +20,18 @@ static struct option long_options[]=
 
 char usage[] = "\nancestralclust [OPTIONS]\n\
 	\n\
-	-h, --help			usage: -i file.fasta -t file_taxonomy.txt -d output_directory\n\
-	-i, --infile			fasta to cluster\n\
-	-t, --infile_taxonomy		taxonomy of fasta to cluster (sorted)\n\
-	-n, --number_of_clusters	number of initial clusters [default: 10]\n\
-	-k, --number_of_sequences	number of sequences in initial cluster [default: 100]\n\
-	-d, --directory			directory to print clusters [directory must exist]\n\
-	-c, --threads			number of threads [default: 1]\n\
-	-o, --output_file		output file\n\
-	-f, --fasta_format		output fasta files for each cluster\n\
-	-u, --use_nw			use Needleman-Wunsch (default is WFA)\n\
-	-l, --number_of_lines_to_read	number of lines to read in from file\n\
-	-p, --number_of_descendants	number of descendants to require to cut branch [default: 10]\n\
+	-h, --help				usage: -i [Input FASTA] -r [Integer <= Number of Sequences] -k [Integer > 1]\n\
+	-i, --infile [REQUIRED]			fasta to cluster\n\
+	-t, --infile_taxonomy [OPTIONAL]	taxonomy of fasta [Sorted in same order as FASTA, not used in clustering]\n\
+	-k, --number_of_clusters [REQUIRED]	number of initial clusters [default: 10]\n\
+	-r, --number_of_sequences [REQUIRED]	number of sequences in initial cluster [default: 100]\n\
+	-d, --directory				directory to print clusters [DIRECTORY MUST EXIST PRIOR TO RUNNING]\n\
+	-c, --threads				number of threads [default: 1]\n\
+	-o, --output_file			output file\n\
+	-f, --fasta_format			output fasta files for each cluster\n\
+	-u, --use_nw				use Needleman-Wunsch [default is WFA]\n\
+	-l, --number_of_lines_to_read		number of lines to read in from file\n\
+	-p, --number_of_descendants		number of descendants to require to cut branch [default: 10]\n\
 	\n";
 
 void print_help_statement(){
@@ -81,12 +81,12 @@ void parse_options(int argc, char **argv, Options *opt){
 				if (!success)
 					fprintf(stderr, "Could not read number of descendants\n");
 				break;
-			case 'n':
+			case 'k':
 				success = sscanf(optarg, "%d", &(opt->number_of_clusters));
 				if (!success)
 					fprintf(stderr, "Could not read number of clusters\n");
 				break;
-			case 'k':
+			case 'r':
 				success = sscanf(optarg, "%d", &(opt->number_of_kseqs));
 				if (!success)
 					fprintf(stderr, "Could not read number of initial sequences to choose\n");

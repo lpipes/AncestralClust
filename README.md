@@ -32,7 +32,7 @@ On macOS, -fopenmp is required for installation.
 # Usage
 The only required argument is the -i, --infile which is a FASTA file to be clustered. The taxonomy file is optional and is not used to inform the clustering. The taxonomy file must be in the same order as the FASTA file with the following format (the FASTA header followed by a tab followed by the taxonomy):
 
-FASTA_header\tdomain;phylum;class;order;family;genus;species
+	FASTA_header\tdomain;phylum;class;order;family;genus;species
 
 # Performance
 AncestralClust tends to have more even clusters (as measured by the coefficient of variation) with fewer relative incompatibilities for every taxonomic level than leading clustering software UCLUST.

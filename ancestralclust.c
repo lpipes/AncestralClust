@@ -10,7 +10,7 @@
 #include "needleman_wunsch.h"
 #include "global.h"
 #include "hashmap.h"
-#include "WFA/affine_wavefront_align.h"
+#include "WFA/gap_affine/affine_wavefront_align.h"
 
 //struct hashmap map;
 char*** clusters;
@@ -4026,8 +4026,8 @@ void assignClusters(int number_of_clusters, node** tree, int node){
 }
 int main(int argc, char **argv){
 	Options opt;
-	opt.number_of_clusters = 10;
-	opt.number_of_kseqs=100;
+	opt.number_of_clusters = -1;
+	opt.number_of_kseqs=-1;
 	opt.slash=0;
 	opt.default_directory=1;
 	opt.numthreads=1;
@@ -4040,6 +4040,14 @@ int main(int argc, char **argv){
 	strcpy(opt.output_directory,"");
 	memset(opt.output_file,'\0',2000);
 	parse_options(argc, argv, &opt);
+	if ( opt.number_of_clusters == -1 ){
+		fprintf(stderr,"Number of desired clusters is a required argument please supply the number with -k\n");
+		exit(1);
+	}
+	if (opt.number_of_kseqs == -1 ){
+		fprintf(stderr,"Number of r sequences to be chosen at random for initial clusters is a required argument please supply the number with -r\n");
+		exit(1);
+	}
 	FILE* fasta_for_clustering;
 	if (( fasta_for_clustering = fopen(opt.fasta,"r")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
 	int number_of_sequences = 0;
@@ -4050,6 +4058,14 @@ int main(int argc, char **argv){
 	//printf("Longest name: %d\n",fasta_specs[2]);
 	if (opt.number_of_clusters > fasta_specs[0] || opt.number_of_clusters < 2){
 		printf("please enter a number of clusters > 1 and less than the number of sequences provided\n");
+		exit(1);
+	}
+	if (opt.number_of_clusters > opt.number_of_kseqs){
+		printf("the number of clusters is > the number of random sequences, please choose -r and -k so that -r < -k\n");
+		exit(1);
+	}
+	if (opt.number_of_kseqs > fasta_specs[0] ){
+		printf("the number of random sequences for initial clusters is > the number of sequences supplied in the input FASTA file. Please choose -r so that it is less than or equal to the number of sequences in the input FASTA file\n");
 		exit(1);
 	}
 	fasta_specs[3] = opt.number_of_clusters+1; //NUMBER OF CLUSTERS
