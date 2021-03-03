@@ -22,6 +22,7 @@ AncestralClust uses <a href="https://github.com/TimoLassmann/kalign">kalign3</a>
 
 # Installation
 To install
+
 git clone https://github.com/lpipes/AncestralClust.git
 cd AncestralClust
 make
