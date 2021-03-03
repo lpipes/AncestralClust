@@ -30,7 +30,7 @@ To install
 On macOS, -fopenmp is required for installation.
 
 # Usage
-The only required argument is the -i, --infile which is a FASTA file to be clustered. The taxonomy file is optional and is not used to inform the clustering. The taxonomy file must be in the same order as the FASTA file with the following format (the FASTA header followed by a tab followed by the taxonomy):
+The only required arguments are the -i, --infile which is a FASTA file to be clustered, -k, --number_of_clusters which is the number of clusters desired, and -r, --number_of_sequences which is the number of initial sequences chosen at random for the initial clustering. The taxonomy file is optional and is not used to inform the clustering. The taxonomy file must be in the same order as the FASTA file with the following format (the FASTA header followed by a tab followed by the taxonomy):
 
 	FASTA_header\tdomain;phylum;class;order;family;genus;species
 
