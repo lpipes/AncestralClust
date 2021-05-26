@@ -47,7 +47,7 @@ void parse_options(int argc, char **argv, Options *opt){
 		exit(0);
 	}
 	while(1){
-		c=getopt_long(argc,argv,"hfun:k:d:i:t:c:o:l:p:",long_options, &option_index);
+		c=getopt_long(argc,argv,"hfun:k:d:i:t:c:o:l:p:r:",long_options, &option_index);
 		if (c==-1) break;
 		switch(c){
 			case 'h':
