@@ -1724,6 +1724,11 @@ unsigned long factorial( unsigned long n){
 	if (n==0) return 1;
 	return n * factorial(n-1);
 }
+double binomialCoeff(double n, double k){
+	if (k==0.0) return 1.0;
+	if (n<=k) return 0.0;
+	return (n*binomialCoeff(n-1,k-1))/k;
+}
 void *runAssignToCluster(void *ptr){
 	struct mystruct *mstr = (mystruct *) ptr;
 	resultsStruct *results=mstr->str;
@@ -3963,7 +3968,8 @@ double calculateAverageDistanceBetweenClusters(node** tree, int number_of_leaves
 	int numPairs=0;
 	double totalDistance1=0;
 	unsigned long n = number_of_clusters;
-	unsigned long number_of_combinations = factorial(n-1)/(factorial(2)*factorial(n-3));
+	//unsigned long number_of_combinations = factorial(n-1)/(factorial(2)*factorial(n-3));
+	unsigned long number_of_combinations = binomialCoeff(n,2);
 	//printf("number_of_combinations is %d\n",number_of_combinations);
 	//double* distances = (double*)malloc(number_of_combinations*sizeof(double));
 	//double distances[number_of_combinations];
