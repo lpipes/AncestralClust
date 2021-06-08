@@ -38,6 +38,16 @@ The only required arguments are the -i, --infile which is a FASTA file to be clu
 AncestralClust tends to have more even clusters (as measured by the Coefficient of Variation) with higher relative NMI for every taxonomic level than leading clustering software UCLUST measured from three different metabarcode libraries (16S, 18S, and COI).
 <img src="https://github.com/lpipes/AncestralClust/blob/master/RelativeNMI_species.png?raw=true">
 
+# Limits
+The maximum number of clusters is set to 100. To set this number higher change line 16 in global.h:
+	#define MAXNUMBEROFCLUSTERS
+The maximum number of sequences in a cluster is set to 10,000. To set this number higher change line 18 in global.h:
+	#define MAXNUMINCLUSTER 10000
+The maximum number of sequences randomly chosen in the initial clusters is set to 10,000. To set this number higher change line 17 in global.h:
+	#define MAXNUMBEROFKSEQS 10000
+The maximum length for sequences is set to 6000bp. To set this number higher change line 10 in global.h:
+	#define FASTA_MAXLINE 6000
+
 # Citation
 Pipes L, and Nielsen R (2021) AncestralClust: Clustering of Divergent Nucleotide Sequences by Ancestral Sequence Reconstruction using Phylogenetic Trees. biorxiv. 
 <a href="https://www.biorxiv.org/content/10.1101/2021.01.08.426008v1">https://www.biorxiv.org/content/10.1101/2021.01.08.426008v1</a>
