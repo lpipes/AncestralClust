@@ -1438,6 +1438,7 @@ void printLessThanFour(gzFile fasta_to_assign, int numberOfUnassigned, Options o
 		fprintf(clusterFile,">%s\n",seqsToPrint[i]);
 		fprintf(clusterFile,"%s\n",actualSeqsToPrint[i]);
 		fclose(clusterFile);
+<<<<<<< HEAD
 	}
 	if (opt.hasTaxFile==1){	
 		for(i=0; i<numberOfUnassigned; i++){
@@ -1445,6 +1446,15 @@ void printLessThanFour(gzFile fasta_to_assign, int numberOfUnassigned, Options o
 		}
 		free(taxfiles);
 	}
+=======
+	}	
+	if (opt.hasTaxFile==1){
+		for(i=0; i<numberOfUnassigned; i++){
+			free(taxfiles[i]);
+		}
+		free(taxfiles);
+	}
+>>>>>>> e32f088ff2459e1b5dab74ce0ba7dbe095810b74
 }
 void printLessThanFour_CLSTR(int numberOfUnAssigned, char*** clstr, int** clstr_lengths, int max_length, char** seqsToPrint, char** actualSeqsToPrint){
 	int i,j;
@@ -1725,6 +1735,11 @@ unsigned long factorial( unsigned long n){
 	return res;*/
 	if (n==0) return 1;
 	return n * factorial(n-1);
+}
+double binomialCoeff(double n, double k){
+	if (k==0.0) return 1.0;
+	if (n<=k) return 0.0;
+	return (n*binomialCoeff(n-1,k-1))/k;
 }
 void *runAssignToCluster(void *ptr){
 	struct mystruct *mstr = (mystruct *) ptr;
@@ -3965,7 +3980,8 @@ double calculateAverageDistanceBetweenClusters(node** tree, int number_of_leaves
 	int numPairs=0;
 	double totalDistance1=0;
 	unsigned long n = number_of_clusters;
-	unsigned long number_of_combinations = factorial(n-1)/(factorial(2)*factorial(n-3));
+	//unsigned long number_of_combinations = factorial(n-1)/(factorial(2)*factorial(n-3));
+	unsigned long number_of_combinations = binomialCoeff(n,2);
 	//printf("number_of_combinations is %d\n",number_of_combinations);
 	//double* distances = (double*)malloc(number_of_combinations*sizeof(double));
 	//double distances[number_of_combinations];
