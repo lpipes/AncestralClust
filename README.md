@@ -44,11 +44,20 @@ The maximum number of clusters is set to 100. To set this number higher change l
 	#define MAXNUMBEROFCLUSTERS
 
 The maximum number of sequences in a cluster is set to 10,000. To set this number higher change line 18 in global.h:
+
 	#define MAXNUMINCLUSTER 10000
+
 The maximum number of sequences randomly chosen in the initial clusters is set to 10,000. To set this number higher change line 17 in global.h:
+
 	#define MAXNUMBEROFKSEQS 10000
+
 The maximum length for sequences is set to 6000bp. To set this number higher change line 10 in global.h:
+
 	#define FASTA_MAXLINE 6000
+
+After changing global.h, compile the program with
+	
+	make
 
 # Citation
 Pipes L, and Nielsen R (2021) AncestralClust: Clustering of Divergent Nucleotide Sequences by Ancestral Sequence Reconstruction using Phylogenetic Trees. biorxiv. 
