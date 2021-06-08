@@ -1438,11 +1438,13 @@ void printLessThanFour(gzFile fasta_to_assign, int numberOfUnassigned, Options o
 		fprintf(clusterFile,">%s\n",seqsToPrint[i]);
 		fprintf(clusterFile,"%s\n",actualSeqsToPrint[i]);
 		fclose(clusterFile);
-	}	
-	for(i=0; i<numberOfUnassigned; i++){
-		free(taxfiles[i]);
 	}
-	free(taxfiles);
+	if (opt.hasTaxFile==1){	
+		for(i=0; i<numberOfUnassigned; i++){
+			free(taxfiles[i]);
+		}
+		free(taxfiles);
+	}
 }
 void printLessThanFour_CLSTR(int numberOfUnAssigned, char*** clstr, int** clstr_lengths, int max_length, char** seqsToPrint, char** actualSeqsToPrint){
 	int i,j;
