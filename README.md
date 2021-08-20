@@ -39,15 +39,15 @@ AncestralClust tends to have more even clusters (as measured by the Coefficient 
 <img src="https://github.com/lpipes/AncestralClust/blob/master/RelativeNMI_species.png?raw=true">
 
 # Limits
-The maximum number of clusters is set to 100. To set this number higher change line 16 in global.h:
+The maximum number of clusters is set to 100. To set this number higher change line 17 in global.h:
 
 	#define MAXNUMBEROFCLUSTERS
 
-The maximum number of sequences in a cluster is set to 10,000. To set this number higher change line 18 in global.h:
+The maximum number of sequences in a cluster is set to 10,000. To set this number higher change line 19 in global.h:
 
 	#define MAXNUMINCLUSTER 10000
 
-The maximum number of sequences randomly chosen in the initial clusters is set to 10,000. To set this number higher change line 17 in global.h:
+The maximum number of sequences randomly chosen in the initial clusters is set to 10,000. To set this number higher change line 18 in global.h:
 
 	#define MAXNUMBEROFKSEQS 10000
 
@@ -55,6 +55,10 @@ The maximum length for sequences is set to 6000bp. To set this number higher cha
 
 	#define FASTA_MAXLINE 6000
 
+The minimum length for a sequence is set to 100bp. To set this number lower change line 11 in global.h:
+
+	#define MIN_SEQ 100
+ 
 After changing global.h, compile the program with
 	
 	make
