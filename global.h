@@ -8,6 +8,7 @@
 #define _GLOBAL_
 
 #define FASTA_MAXLINE 6000
+#define MIN_SEQ 100
 #define MAXNAME 30
 #define MAX_FILENAME 100
 #define DISTMAX 30.0

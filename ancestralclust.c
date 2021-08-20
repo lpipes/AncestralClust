@@ -1438,7 +1438,6 @@ void printLessThanFour(gzFile fasta_to_assign, int numberOfUnassigned, Options o
 		fprintf(clusterFile,">%s\n",seqsToPrint[i]);
 		fprintf(clusterFile,"%s\n",actualSeqsToPrint[i]);
 		fclose(clusterFile);
-<<<<<<< HEAD
 	}
 	if (opt.hasTaxFile==1){	
 		for(i=0; i<numberOfUnassigned; i++){
@@ -1446,15 +1445,6 @@ void printLessThanFour(gzFile fasta_to_assign, int numberOfUnassigned, Options o
 		}
 		free(taxfiles);
 	}
-=======
-	}	
-	if (opt.hasTaxFile==1){
-		for(i=0; i<numberOfUnassigned; i++){
-			free(taxfiles[i]);
-		}
-		free(taxfiles);
-	}
->>>>>>> e32f088ff2459e1b5dab74ce0ba7dbe095810b74
 }
 void printLessThanFour_CLSTR(int numberOfUnAssigned, char*** clstr, int** clstr_lengths, int max_length, char** seqsToPrint, char** actualSeqsToPrint){
 	int i,j;
@@ -3870,12 +3860,15 @@ int readInXNumberOfLines(int numberOfLinesToRead, gzFile query_reads, int* assig
 	if ( finished==0 ){
 		return 0;
 	}
-	for(k=0; k<kseqs; k++){
-		if ( iter <= assignedReads[k] ){
-			break;
-		}
-	}
-	if (k==kseqs){
+	//for(k=0; k<kseqs; k++){
+	//	if ( iter <= assignedReads[k] ){
+	//		break;
+	//	}
+	//}
+	//if (k==kseqs){
+	//	return 0;
+	//}
+	if ( iter == fasta_specs[0] ){
 		return 0;
 	}
 	int m=0;
@@ -3942,9 +3935,9 @@ int readInXNumberOfLines(int numberOfLinesToRead, gzFile query_reads, int* assig
 					readsStruct->sequence[refresh-1][i] = query[buffer_index];
 					buffer_index++;
 				}
-				if( size < 100 && refresh==numberOfLinesToRead && last_size != 0){
+				if( size < MIN_SEQ && refresh==numberOfLinesToRead && last_size != 0){
 					break;
-				}else if ( last_size == 0 && size > 100 && refresh==numberOfLinesToRead ){
+				}else if ( last_size == 0 && size > MIN_SEQ && refresh==numberOfLinesToRead ){
 					break;
 				}
 			}else if ( k <= kseqs && iter == assignedReads[k] && buffer[0] == '>'){
