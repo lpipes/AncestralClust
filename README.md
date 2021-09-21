@@ -5,10 +5,10 @@ AncestralClust was developed to cluster divergent sequences. A neighbor-joining 
 
 ancestralclust [OPTIONS]
 	
-	-h, --help				usage: -i [Input FASTA] -r [Integer <= Number of Sequences] -k [Integer > 1]
+	-h, --help				usage: -i [Input FASTA] -r [Integer <= Number of Sequences] -b [Integer > 1]
 	-i, --infile [REQUIRED]			fasta to cluster
 	-t, --infile_taxonomy [OPTIONAL]	taxonomy of fasta [Sorted in same order as FASTA, not used in clustering]
-	-k, --number_of_clusters [REQUIRED]	number of initial clusters [default: 10]
+	-b, --number_of_clusters [REQUIRED]	number of initial clusters [default: 10]
 	-r, --number_of_sequences [REQUIRED]	number of sequences in initial cluster [default: 100]
 	-d, --directory				directory to print clusters [DIRECTORY MUST EXIST PRIOR TO RUNNING]
 	-c, --threads				number of threads [default: 1]

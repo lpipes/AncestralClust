@@ -23,7 +23,7 @@ char usage[] = "\nancestralclust [OPTIONS]\n\
 	-h, --help				usage: -i [Input FASTA] -r [Integer <= Number of Sequences] -k [Integer > 1]\n\
 	-i, --infile [REQUIRED]			fasta to cluster\n\
 	-t, --infile_taxonomy [OPTIONAL]	taxonomy of fasta [Sorted in same order as FASTA, not used in clustering]\n\
-	-k, --number_of_clusters [REQUIRED]	number of initial clusters [default: 10]\n\
+	-b, --number_of_clusters [REQUIRED]	number of initial clusters [default: 10]\n\
 	-r, --number_of_sequences [REQUIRED]	number of sequences in initial cluster [default: 100]\n\
 	-d, --directory				directory to print clusters [DIRECTORY MUST EXIST PRIOR TO RUNNING]\n\
 	-c, --threads				number of threads [default: 1]\n\
@@ -47,7 +47,7 @@ void parse_options(int argc, char **argv, Options *opt){
 		exit(0);
 	}
 	while(1){
-		c=getopt_long(argc,argv,"hfun:k:d:i:t:c:o:l:p:r:",long_options, &option_index);
+		c=getopt_long(argc,argv,"hfun:b:d:i:t:c:o:l:p:r:",long_options, &option_index);
 		if (c==-1) break;
 		switch(c){
 			case 'h':
@@ -81,7 +81,7 @@ void parse_options(int argc, char **argv, Options *opt){
 				if (!success)
 					fprintf(stderr, "Could not read number of descendants\n");
 				break;
-			case 'k':
+			case 'b':
 				success = sscanf(optarg, "%d", &(opt->number_of_clusters));
 				if (!success)
 					fprintf(stderr, "Could not read number of clusters\n");
