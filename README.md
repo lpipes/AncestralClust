@@ -65,7 +65,7 @@ After changing global.h, compile the program with
 
 # Citation
 Pipes L, and Nielsen R (2021) AncestralClust: Clustering of Divergent Nucleotide Sequences by Ancestral Sequence Reconstruction using Phylogenetic Trees. biorxiv. 
-<a href="https://www.biorxiv.org/content/10.1101/2021.01.08.426008v1">https://www.biorxiv.org/content/10.1101/2021.01.08.426008v1</a>
+<a href="https://www.biorxiv.org/content/10.1101/2021.01.08.426008v3">https://www.biorxiv.org/content/10.1101/2021.01.08.426008v3</a>
 
 # Data from manuscript
 The data from the manuscript is contained in this repository: <a href="https://github.com/lpipes/AncestralClust_manuscript">https://github.com/lpipes/AncestralClust_manuscript</a>
