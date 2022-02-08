@@ -10,7 +10,7 @@ OPENMP = -fopenmp
 # -lm links the math library
 #LIBS = -lm -lpthread -lz
 LIBS = -lm -pthread -lz
-OPTIMIZATION = -O3 -march=native
+OPTIMIZATION = -march=native
 #sources
 SOURCES = ancestralclust.c options.c math.c opt.c
 NEEDLEMANWUNSCH = needleman_wunsch.c alignment.c alignment_scoring.c
