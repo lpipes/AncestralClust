@@ -3722,7 +3722,7 @@ void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int w
 	//for(i=0; i<numberOfRoots;i++){
 	//printf("NUMBASE: %d\n",numbase);
 	//if ( clusterSize[i+1] > 3){
-	for(i=0;j<numbase;j++){
+	for(j=0;j<numbase;j++){
 		//minimum=PP[i][rootArr[i]][j][0];
 		minimum=1.0-treeArr[whichRoot][root].posteriornc[j][0];
 		index=0;
@@ -4593,6 +4593,9 @@ int main(int argc, char **argv){
 				}
 			}
 			rootSeqs[i]=(char *)malloc((numbase[i]+1)*(sizeof(char)));
+			for(j=0; j<numbase[i]+1; j++){
+				rootSeqs[i][j]='\0';
+			}
 			printRootSeqs(rootSeqs,treeArr,numbase[i],rootArr[i],i);
 			for(j=0; j<numbase[i]; j++){
 				free(treeArr[i][rootArr[i]].likenc[j]);
