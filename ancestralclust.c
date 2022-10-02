@@ -10,7 +10,7 @@
 #include "needleman_wunsch.h"
 #include "global.h"
 #include "hashmap.h"
-#include "WFA/affine_wavefront_align.h"
+#include "WFA2/wavefront_align.h"
 
 //struct hashmap map;
 char*** clusters;
@@ -580,13 +580,20 @@ void *fillInMat_avg(void *ptr){
 	int indexB_end = dstr->indexB_end;
 	int *clusterSize = dstr->clusterSize;
 	//struct resultsStruct results = dstr->str;
-	affine_penalties_t affine_penalties = {
+	/*affine_penalties_t affine_penalties = {
 		.match = 0,
 		.mismatch =4,
 		.gap_opening = 6,
 		.gap_extension = 2,
 	};
-	mm_allocator_t* const mm_allocator = mm_allocator_new(BUFFER_SIZE_8M);
+	mm_allocator_t* const mm_allocator = mm_allocator_new(BUFFER_SIZE_16M);*/
+	wavefront_aligner_attr_t attributes = wavefront_aligner_attr_default;
+	attributes.distance_metric = gap_affine;
+	attributes.affine_penalties.mismatch =4;
+	attributes.affine_penalties.gap_opening = 6;
+	attributes.affine_penalties.gap_extension = 2;
+	// Initialize Wavefront Aligner
+	wavefront_aligner_t* const wf_aligner = wavefront_aligner_new(&attributes);
 	int i,j,k,l;
 	double sum;
 	double average_on_columns=0;
@@ -602,12 +609,15 @@ void *fillInMat_avg(void *ptr){
 				l=0;
 				end_j=clusterSize[j];
 				while(l<end_j){
-					affine_wavefronts_t* affine_wavefronts = affine_wavefronts_new_complete(strlen(dstr->seq[i][k]),strlen(dstr->seq[j][l]),&affine_penalties,NULL,mm_allocator);
+					/*affine_wavefronts_t* affine_wavefronts = affine_wavefronts_new_complete(strlen(dstr->seq[i][k]),strlen(dstr->seq[j][l]),&affine_penalties,NULL,mm_allocator);
 					affine_wavefronts_align(affine_wavefronts,dstr->seq[i][k],strlen(dstr->seq[i][k]),dstr->seq[j][l],strlen(dstr->seq[j][l]));
-					char* const pattern_alg = mm_allocator_calloc(mm_allocator,strlen(dstr->seq[i][k])+strlen(dstr->seq[j][l])+1,char,true);
-					char* const text_alg = mm_allocator_calloc(mm_allocator,strlen(dstr->seq[i][k])+strlen(dstr->seq[j][l])+1,char,true);
-					//edit_cigar_print_pretty(stderr,dstr->seq[i][k],strlen(dstr->seq[i][k]),dstr->seq[j][l],strlen(dstr->seq[j][l]),&affine_wavefronts->edit_cigar,mm_allocator);
-					int alignment_length_initial = perform_WFA_alignment(affine_wavefronts,mm_allocator,dstr->seq[i][k],dstr->seq[j][l],pattern_alg,text_alg);
+					
+					//edit_cigar_print_pretty(stderr,dstr->seq[i][k],strlen(dstr->seq[i][k]),dstr->seq[j][l],strlen(dstr->seq[j][l]),&affine_wavefronts->edit_cigar,mm_allocator);*/
+					wavefront_align(wf_aligner,dstr->seq[i][k],strlen(dstr->seq[i][k]),dstr->seq[j][l],strlen(dstr->seq[j][l])); //Align
+					char* const pattern_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(dstr->seq[i][k])+strlen(dstr->seq[j][l])+1,char,true);
+					char* const ops_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(dstr->seq[i][k])+strlen(dstr->seq[j][l])+1,char,true);
+					char* const text_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(dstr->seq[i][k])+strlen(dstr->seq[j][l])+1,char,true);
+					int alignment_length_initial = perform_WFA_alignment(wf_aligner->cigar,wf_aligner->mm_allocator,dstr->seq[i][k],dstr->seq[j][l],pattern_alg,text_alg,ops_alg,wf_aligner->cigar->begin_offset,wf_aligner->cigar->end_offset);
 					int** DATA = (int **)malloc(2*sizeof(int *));
 					int m;
 					for(m=0; m<2; m++){
@@ -621,7 +631,9 @@ void *fillInMat_avg(void *ptr){
 					free(DATA[1]);
 					free(DATA);
 					free(mult);
-					affine_wavefronts_delete(affine_wavefronts);
+					mm_allocator_free(wf_aligner->mm_allocator,pattern_alg);
+					mm_allocator_free(wf_aligner->mm_allocator,ops_alg);
+					mm_allocator_free(wf_aligner->mm_allocator,text_alg);
 					sum=sum+distance;
 					number_of_pairs++;
 					l++;
@@ -634,7 +646,7 @@ void *fillInMat_avg(void *ptr){
 			number_of_columns++;
 		}
 	}
-	mm_allocator_delete(mm_allocator);
+	wavefront_aligner_delete(wf_aligner);
 	average_on_columns=average_on_columns/number_of_columns;
 	//printf("AVERAGE: %lf\n",average_on_columns);
 	dstr->result=average_on_columns;
@@ -652,7 +664,7 @@ void *fillInMat(void *ptr){
 	int i,j;
 	for(i=start_i; i<end_i; i++){
 		for(j=start_j; j<end_j; j++){
-				mm_allocator_t* const mm_allocator = mm_allocator_new(BUFFER_SIZE_8M);
+				/*mm_allocator_t* const mm_allocator = mm_allocator_new(BUFFER_SIZE_16M);
 				affine_penalties_t affine_penalties = {
 					.match = 0,
 					.mismatch =4,
@@ -666,7 +678,19 @@ void *fillInMat(void *ptr){
 				char* const text_alg = mm_allocator_calloc(mm_allocator,strlen(dstr->seq[i])+strlen(dstr->seq[j])+1,char,true);
 				int alignment_length = perform_WFA_alignment(affine_wavefronts,mm_allocator,dstr->seq[i],dstr->seq[j],pattern_alg,text_alg);
 				//printf("%s\n%s\n",pattern_alg,text_alg);
-				affine_wavefronts_delete(affine_wavefronts);
+				affine_wavefronts_delete(affine_wavefronts);*/
+				wavefront_aligner_attr_t attributes = wavefront_aligner_attr_default;
+				attributes.distance_metric = gap_affine;
+				attributes.affine_penalties.mismatch =4;
+				attributes.affine_penalties.gap_opening = 6;
+				attributes.affine_penalties.gap_extension = 2;
+				// Initialize Wavefront Aligner
+				wavefront_aligner_t* const wf_aligner = wavefront_aligner_new(&attributes);
+				wavefront_align(wf_aligner,dstr->seq[i],strlen(dstr->seq[i]),dstr->seq[j],strlen(dstr->seq[j])); //Align
+				char* const pattern_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(dstr->seq[i])+strlen(dstr->seq[j])+1,char,true);
+				char* const ops_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(dstr->seq[i])+strlen(dstr->seq[j])+1,char,true);
+				char* const text_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(dstr->seq[i])+strlen(dstr->seq[j])+1,char,true);
+				int alignment_length = perform_WFA_alignment(wf_aligner->cigar,wf_aligner->mm_allocator,dstr->seq[i],dstr->seq[j],pattern_alg,text_alg,ops_alg,wf_aligner->cigar->begin_offset,wf_aligner->cigar->end_offset);	
 				int** DATA = (int **)malloc(2*sizeof(int *));
 				int k;
 				for(k=0; k<2; k++){
@@ -675,11 +699,15 @@ void *fillInMat(void *ptr){
 				int* mult = (int *)malloc(alignment_length*sizeof(int));
 				alignment_length = populate_DATA(pattern_alg,text_alg,DATA,alignment_length,mult);
 				Get_dist_JC(alignment_length,distMat,DATA,mult,i,j);
-				mm_allocator_delete(mm_allocator);
+				//mm_allocator_delete(mm_allocator);
 				free(mult);
 				free(DATA[0]);
 				free(DATA[1]);
 				free(DATA);
+				mm_allocator_free(wf_aligner->mm_allocator,pattern_alg);
+				mm_allocator_free(wf_aligner->mm_allocator,ops_alg);
+				mm_allocator_free(wf_aligner->mm_allocator,text_alg);
+				wavefront_aligner_delete(wf_aligner);
 		}
 	}
 	/*for(i=start_i; i<end_i; i++){
@@ -1073,27 +1101,40 @@ void calculateAverageDist(char** seqsA, char** seqsB, int sizeA, int sizeB, int 
 	alignment_free(aln);
 	needleman_wunsch_free(nw);
 }
-double findShortestDist_WFA(int index, char* seq, int clusterSize, int longestSeq, double** distMat2, int** DATA, int* mult){
+double findShortestDist_WFA(int index, char* seq, int clusterSize, double** distMat2, int** DATA, int* mult){
 	int i,j;
-	affine_penalties_t affine_penalties = {
+	wavefront_aligner_attr_t attributes = wavefront_aligner_attr_default;
+	attributes.distance_metric = gap_affine;
+	attributes.affine_penalties.mismatch =4;
+	attributes.affine_penalties.gap_opening = 6;
+	attributes.affine_penalties.gap_extension = 2;
+	/*affine_penalties_t affine_penalties = {
 		.match = 0,
 		.mismatch =4,
 		.gap_opening = 6,
 		.gap_extension = 2,
-	};
+	};*/
 	for(i=0; i<clusterSize; i++){
-		mm_allocator_t* const mm_allocator = mm_allocator_new(BUFFER_SIZE_8M);
+		// Initialize Wavefront Aligner
+		wavefront_aligner_t* const wf_aligner = wavefront_aligner_new(&attributes);
+		//mm_allocator_t* const mm_allocator = mm_allocator_new(BUFFER_SIZE_8M);
 		char* seq1 = strdup(rootSeqs[index]);
 		char* seq2 = strdup(seq);
-		affine_wavefronts_t* affine_wavefronts = affine_wavefronts_new_complete(strlen(seq1),strlen(seq2),&affine_penalties,NULL,mm_allocator);
+		/*affine_wavefronts_t* affine_wavefronts = affine_wavefronts_new_complete(strlen(seq1),strlen(seq2),&affine_penalties,NULL,mm_allocator);
 		affine_wavefronts_align(affine_wavefronts,seq1,strlen(seq1),seq2,strlen(seq2));
 		const int score = edit_cigar_score_gap_affine(&affine_wavefronts->edit_cigar,&affine_penalties);
 		//edit_cigar_print_pretty(stderr,seq1,strlen(seq1),seq2,strlen(seq2),&affine_wavefronts->edit_cigar,mm_allocator);
 		char* const pattern_alg = mm_allocator_calloc(mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
-		char* const text_alg = mm_allocator_calloc(mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
+		char* const text_alg = mm_allocator_calloc(mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);*/
+		wavefront_align(wf_aligner,seq1,strlen(seq1),seq2,strlen(seq2)); //Align
+		char* const pattern_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
+		char* const ops_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
+		char* const text_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
+		int alignment_length_initial = perform_WFA_alignment(wf_aligner->cigar,wf_aligner->mm_allocator,seq1,seq2,pattern_alg,text_alg,ops_alg,wf_aligner->cigar->begin_offset,wf_aligner->cigar->end_offset);
+
 		int k, alg_pos =0, pattern_pos= 0, text_pos =0;
-		for (k=affine_wavefronts->edit_cigar.begin_offset;k<affine_wavefronts->edit_cigar.end_offset;++k) {
-			switch (affine_wavefronts->edit_cigar.operations[k]) {
+		for (k=wf_aligner->cigar->begin_offset;k<wf_aligner->cigar->end_offset;++k) {
+			switch (wf_aligner->cigar->operations[k]) {
 				case 'M':
 					if (seq1[pattern_pos] != seq2[text_pos]) {
 						pattern_alg[alg_pos] = seq1[pattern_pos];
@@ -1137,8 +1178,12 @@ double findShortestDist_WFA(int index, char* seq, int clusterSize, int longestSe
 		int alignment_length = strlen(pattern_alg);
 		alignment_length = populate_DATA(pattern_alg,text_alg,DATA,alignment_length,mult);
 		Get_dist_JC(alignment_length,distMat2,DATA,mult,i,0);
-		affine_wavefronts_delete(affine_wavefronts);
-		mm_allocator_delete(mm_allocator);
+		mm_allocator_free(wf_aligner->mm_allocator,pattern_alg);
+		mm_allocator_free(wf_aligner->mm_allocator,ops_alg);
+		mm_allocator_free(wf_aligner->mm_allocator,text_alg);
+		//affine_wavefronts_delete(affine_wavefronts);
+		//mm_allocator_delete(mm_allocator);
+		wavefront_aligner_delete(wf_aligner);
 		free(seq1);
 		free(seq2);
 	}
@@ -1150,7 +1195,7 @@ double findShortestDist_WFA(int index, char* seq, int clusterSize, int longestSe
 	}
 	return shortestDist;
 }
-double findShortestDist(int index, char* seq, int clusterSize, int longestSeq, nw_alignment* nw_struct, double** distMat, int** DATA, int* mult){
+double findShortestDist(int index, char* seq, int clusterSize, nw_alignment* nw_struct, double** distMat, int** DATA, int* mult){
 	int i,j;
 	/*nw_aligner_t *nw;
 	alignment_t *aln;
@@ -1670,16 +1715,19 @@ void saveForLater(int index, resultsStruct *results, int sizeOfChunk, int iterat
 	//strcpy(results->savedForNewClusters[i+1],accToSave);
 	results->savedForNewClusters[place]=index+iteration+index_in_original_file;
 }
-int perform_WFA_alignment(affine_wavefronts_t* affine_wavefronts, mm_allocator_t* mm_allocator,char* seq1, char* seq2,char* const pattern_alg,char* const text_alg){
+int perform_WFA_alignment(cigar_t* const cigar, mm_allocator_t* mm_allocator,char* seq1, char* seq2,char* const pattern_alg,char* const text_alg,char* const ops_alg, int begin_offset, int end_offset){
+	char* const operations = cigar->operations;
 	int k, alg_pos =0, pattern_pos= 0, text_pos =0;
-	for (k=affine_wavefronts->edit_cigar.begin_offset;k<affine_wavefronts->edit_cigar.end_offset;++k) {
-		switch (affine_wavefronts->edit_cigar.operations[k]) {
+	for (k=begin_offset;k<end_offset;++k) {
+		switch (operations[k]) {
 			case 'M':
 				if (seq1[pattern_pos] != seq2[text_pos]) {
 					pattern_alg[alg_pos] = seq1[pattern_pos];
+					ops_alg[alg_pos] = 'X';
 					text_alg[alg_pos++] = seq2[text_pos];
 				}else{
 					pattern_alg[alg_pos] = seq1[pattern_pos];
+					ops_alg[alg_pos] = "|";
 					text_alg[alg_pos++] = seq2[text_pos];
 				}
 				pattern_pos++; text_pos++;
@@ -1687,18 +1735,22 @@ int perform_WFA_alignment(affine_wavefronts_t* affine_wavefronts, mm_allocator_t
 			case 'X':
 				if (seq1[pattern_pos] != seq2[text_pos]) {
 					pattern_alg[alg_pos] = seq1[pattern_pos++];
+					ops_alg[alg_pos] = ' ';
 					text_alg[alg_pos++] = seq2[text_pos++];
 				}else{
 					pattern_alg[alg_pos] = seq1[pattern_pos++];
+					ops_alg[alg_pos] = 'X';
 					text_alg[alg_pos++] = seq2[text_pos++];
 				}
 				break;
 			case 'I':
 				pattern_alg[alg_pos] = '-';
+				ops_alg[alg_pos] = ' ';
 				text_alg[alg_pos++] = seq2[text_pos++];
 				break;
 			case 'D':
 				pattern_alg[alg_pos] = seq1[pattern_pos++];
+				ops_alg[alg_pos] = ' ';
 				text_alg[alg_pos++] = '-';
 				break;
 			default:
@@ -1708,10 +1760,12 @@ int perform_WFA_alignment(affine_wavefronts_t* affine_wavefronts, mm_allocator_t
 	k=0;
 	while (pattern_pos < strlen(seq1)) {
 		pattern_alg[alg_pos+k] = seq1[pattern_pos++];
+		ops_alg[alg_pos+k] = '?';
 		++k;
 	}
 	while (text_pos < strlen(seq2)) {
 		text_alg[alg_pos+k] = seq2[text_pos++];
+		ops_alg[alg_pos+k] = '?';
 		++k;
 	}
 	int alignment_length = strlen(pattern_alg);
@@ -1728,7 +1782,7 @@ unsigned long factorial( unsigned long n){
 }
 double binomialCoeff(double n, double k){
 	if (k==0.0) return 1.0;
-	if (n<=k) return 0.0;
+	if(n<=k) return 0.0;
 	return (n*binomialCoeff(n-1,k-1))/k;
 }
 void *runAssignToCluster(void *ptr){
@@ -1738,7 +1792,7 @@ void *runAssignToCluster(void *ptr){
 	int end=mstr->end;
 	int num_threads = mstr->num_threads;
 	int sizeOfChunk=end-start;
-	printf("sizeOfChunk is %d\n",sizeOfChunk);
+	//printf("sizeOfChunk is %d\n",sizeOfChunk);
 	double average = mstr->average;
 	//double average = 0.2;
 	int number_of_clusters = mstr->number_of_clusters;
@@ -1826,9 +1880,9 @@ void *runAssignToCluster(void *ptr){
 				//pthread_mutex_lock(&lock);
 				//distance=findShortestDist(clusterSeqs[j],sequences[i],clusterSize[j],fasta_specs[3],nw_struct,distMat2,DATA,mult);
 				if (mstr->use_nw==0){
-					distance=findShortestDist_WFA(j-1,readsStruct->sequence[i],1,fasta_specs[3],distMat2,DATA,mult);
+					distance=findShortestDist_WFA(j-1,readsStruct->sequence[i],1,distMat2,DATA,mult);
 				}else{
-					distance=findShortestDist(j-1,readsStruct->sequence[i],1,fasta_specs[3],nw_struct,distMat2,DATA,mult);
+					distance=findShortestDist(j-1,readsStruct->sequence[i],1,nw_struct,distMat2,DATA,mult);
 				}
 				//pthread_mutex_unlock(&lock);
 				if (distance < shortest_distance){
@@ -3716,7 +3770,7 @@ void store_PPs(type_of_PP**** PP, int numberOfRoots,int* numspec, int* numbase){
 		}
 	}
 }
-void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int whichRoot){
+void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int whichRoot, int* gapped, int first_time){
 	type_of_PP minimum;
 	int index,i,j,k;
 	//for(i=0; i<numberOfRoots;i++){
@@ -3748,11 +3802,21 @@ void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int w
 	//}
 	//}
 	//for(i=0;i<numberOfRoots;i++){
-		printf("Root Sequence: ");
-		for(j=0;j<numbase;j++){
-			printf("%c",rootSeqs[whichRoot][j]);
+		FILE* root_sequences_file;
+		if ( first_time == 1){
+			if (( root_sequences_file = fopen("root_sequences.fasta","w")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
 		}
-		printf("\n");
+		if ( first_time == 0 ){
+			if (( root_sequences_file = fopen("root_sequences.fasta","a")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
+		}
+		fprintf(root_sequences_file,">%d\n",whichRoot);
+		for(j=0;j<numbase;j++){
+			if ( gapped[j] != 1 ){
+				fprintf(root_sequences_file,"%c",rootSeqs[whichRoot][j]);
+			}
+		}
+		fprintf(root_sequences_file,"\n");
+		fclose(root_sequences_file);
 	//}
 }
 void swap(int* xp, int* yp){
@@ -3860,15 +3924,12 @@ int readInXNumberOfLines(int numberOfLinesToRead, gzFile query_reads, int* assig
 	if ( finished==0 ){
 		return 0;
 	}
-	//for(k=0; k<kseqs; k++){
-	//	if ( iter <= assignedReads[k] ){
-	//		break;
-	//	}
-	//}
-	//if (k==kseqs){
-	//	return 0;
-	//}
-	if ( iter == fasta_specs[0] ){
+	for(k=0; k<kseqs; k++){
+		if ( iter <= assignedReads[k] ){
+			break;
+		}
+	}
+	if (k==kseqs){
 		return 0;
 	}
 	int m=0;
@@ -3935,9 +3996,9 @@ int readInXNumberOfLines(int numberOfLinesToRead, gzFile query_reads, int* assig
 					readsStruct->sequence[refresh-1][i] = query[buffer_index];
 					buffer_index++;
 				}
-				if( size < MIN_SEQ && refresh==numberOfLinesToRead && last_size != 0){
+				if( size < 100 && refresh==numberOfLinesToRead && last_size != 0){
 					break;
-				}else if ( last_size == 0 && size > MIN_SEQ && refresh==numberOfLinesToRead ){
+				}else if ( last_size == 0 && size > 100 && refresh==numberOfLinesToRead ){
 					break;
 				}
 			}else if ( k <= kseqs && iter == assignedReads[k] && buffer[0] == '>'){
@@ -4035,6 +4096,21 @@ void assignClusters(int number_of_clusters, node** tree, int node){
 		assignClusters(number_of_clusters,tree,child2);
 	}
 }
+void findGappedSites(int* gapped, int numbase, int numseqs, int** seqArr){
+	int i,j;
+	int gap=0;
+	for(i=0; i<numbase; i++){
+		gap=0;
+		for(j=0; j<numseqs; j++){
+			if (seqArr[j][i]==4){
+				gap++;
+			}
+		}
+		if ( gap > numseqs/2 ){
+			gapped[i]=1;
+		}
+	}
+}
 int main(int argc, char **argv){
 	Options opt;
 	opt.number_of_clusters = -1;
@@ -4069,7 +4145,7 @@ int main(int argc, char **argv){
 	//printf("Longest name: %d\n",fasta_specs[2]);
 	if (opt.number_of_clusters > fasta_specs[0] || opt.number_of_clusters < 2){
 		printf("please enter a number of clusters > 1 and less than the number of sequences provided\n");
-		exit(1);
+	//	exit(1);
 	}
 	if (opt.number_of_clusters > opt.number_of_kseqs){
 		printf("the number of clusters is > the number of random sequences, please choose -r and -k so that -r < -k\n");
@@ -4488,7 +4564,7 @@ int main(int argc, char **argv){
 		}
 		printInitialClusters_CLSTR(starting_number_of_clusters,numberOfNodesToCut,clusterSize,opt,kseqs,fasta_specs[1],clstr,clstr_lengths,cluster_seqs);
 	}
-	if (numberOfUnAssigned == kseqs){ break;}
+	//if (numberOfUnAssigned == kseqs){ break;}
 	if ( numberOfNodesToCut > 0 ){
 		lastTime = average_distance;
 	}
@@ -4563,10 +4639,19 @@ int main(int argc, char **argv){
 		//		}
 		//}
 		numbase[i] = 0;
+		int first_time = 0;
+		if (numberOfUnAssigned == fasta_specs[0] && i==0){
+			first_time=1;
+		}
 		if (clusterSize[i+1] > 3){
 			int** seqArr= (int **)malloc(clusterSize[i+1]*sizeof(int *));
 			//main_kalign(1,kalign_args,clusterSize[i+1],clusters[i+1],cluster_seqs[i+1],seqArr,numbase,i);
 			main_kalign(clusterSize[i+1],clusters[i+1],cluster_seqs[i+1],seqArr,numbase,i,opt.numthreads);
+			int* gapped = (int*)malloc(numbase[i]*sizeof(int));
+			for(j=0; j<numbase[i]; j++){
+				gapped[j]=0;
+			}
+			findGappedSites(gapped,numbase[i],clusterSize[i+1],seqArr);
 			for(j=0; j<2*clusterSize[i+1]-1; j++){
 				treeArr[i][j].likenc = malloc(numbase[i]*sizeof(double *));
 				treeArr[i][j].posteriornc = malloc(numbase[i]*sizeof(double *));
@@ -4596,7 +4681,7 @@ int main(int argc, char **argv){
 			for(j=0; j<numbase[i]+1; j++){
 				rootSeqs[i][j]='\0';
 			}
-			printRootSeqs(rootSeqs,treeArr,numbase[i],rootArr[i],i);
+			printRootSeqs(rootSeqs,treeArr,numbase[i],rootArr[i],i,gapped,first_time);
 			for(j=0; j<numbase[i]; j++){
 				free(treeArr[i][rootArr[i]].likenc[j]);
 				free(treeArr[i][rootArr[i]].posteriornc[j]);
@@ -4610,6 +4695,16 @@ int main(int argc, char **argv){
 			numbase[i] = strlen(cluster_seqs[i+1][random_number]);
 			rootSeqs[i]=(char *)malloc((numbase[i]+1)*(sizeof(char)));
 			strcpy(rootSeqs[i],cluster_seqs[i+1][random_number]);
+			FILE* root_sequences_file;
+			if ( first_time == 1 ){
+				if (( root_sequences_file = fopen("root_sequences.fasta","w")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
+			}
+			if ( first_time ==0 ){
+				if (( root_sequences_file = fopen("root_sequences.fasta","a")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
+			}
+			fprintf(root_sequences_file,">random%d\n",i);
+			fprintf(root_sequences_file,"%s\n",rootSeqs[i]);
+			fclose(root_sequences_file);
 		}
 	}
 	free(rootArr);
@@ -4806,6 +4901,7 @@ int main(int argc, char **argv){
 	//double average = calculateAvg[0]/calculateAvg[1];
 	//free(calculateAvg);
 	//printf("average pairwise: %lf\n",averageAvg);
+	if (numberOfUnAssigned == kseqs){ break;}
 	clock_gettime(CLOCK_MONOTONIC, &tend);
 	printf("Took %lf seconds\n",((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) - ((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec));
 	if ( opt.numthreads > opt.numberOfLinesToRead/2 ){
