@@ -21,7 +21,7 @@ static struct option long_options[]=
 char usage[] = "\nancestralclust [OPTIONS]\n\
 	\n\
 	-h, --help				usage: -i [Input FASTA] -r [Integer <= Number of Sequences] -k [Integer > 1]\n\
-	-i, --infile [REQUIRED]			fasta to cluster\n\
+	-i, --infile [REQUIRED]			fasta to cluster [expects sequence in 1 line (i.e., without line breaks)]\n\
 	-t, --infile_taxonomy [OPTIONAL]	taxonomy of fasta [Sorted in same order as FASTA, not used in clustering]\n\
 	-b, --number_of_clusters [REQUIRED]	number of initial clusters [default: 10]\n\
 	-r, --number_of_sequences [REQUIRED]	number of sequences in initial cluster [default: 100]\n\
@@ -30,7 +30,7 @@ char usage[] = "\nancestralclust [OPTIONS]\n\
 	-o, --output_file			output file\n\
 	-f, --fasta_format			output fasta files for each cluster\n\
 	-u, --use_nw				use Needleman-Wunsch [default is WFA]\n\
-	-l, --number_of_lines_to_read		number of lines to read in from file\n\
+	-l, --number_of_lines_to_read		number of lines to read in from file [default: 10000]\n\
 	-p, --number_of_descendants		number of descendants to require to cut branch [default: 10]\n\
 	\n";
 
