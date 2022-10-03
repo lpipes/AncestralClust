@@ -10,7 +10,6 @@
 #include "needleman_wunsch.h"
 #include "global.h"
 #include "hashmap.h"
-//#include "WFA/gap_affine/affine_wavefront_align.h"
 #include "WFA2/wavefront_align.h"
 
 //struct hashmap map;
@@ -4008,9 +4007,9 @@ int readInXNumberOfLines(int numberOfLinesToRead, gzFile query_reads, int* assig
 					readsStruct->sequence[refresh-1][i] = query[buffer_index];
 					buffer_index++;
 				}
-				if( size < fasta_specs[3] && refresh==numberOfLinesToRead && last_size != 0){
+				if( size < MIN_SEQ && refresh==numberOfLinesToRead && last_size != 0){
 					break;
-				}else if ( last_size == 0 && size >= fasta_specs[3] && refresh==numberOfLinesToRead ){
+				}else if ( last_size == 0 && size >= MIN_SEQ && refresh==numberOfLinesToRead ){
 					break;
 				}
 			}else if ( k <= kseqs && iter == assignedReads[k] && buffer[0] == '>'){
@@ -4138,9 +4137,10 @@ int main(int argc, char **argv){
 	opt.numberOfLinesToRead=10000;
 	strcpy(opt.output_directory,"");
 	memset(opt.output_file,'\0',2000);
+	memset(opt.root,'\0',1000);
 	parse_options(argc, argv, &opt);
 	if ( opt.number_of_clusters == -1 ){
-		fprintf(stderr,"Number of desired clusters is a required argument please supply the number with -k\n");
+		fprintf(stderr,"Number of desired clusters is a required argument please supply the number with -b\n");
 		exit(1);
 	}
 	if (opt.number_of_kseqs == -1 ){
@@ -4160,7 +4160,7 @@ int main(int argc, char **argv){
 	//	exit(1);
 	}
 	if (opt.number_of_clusters > opt.number_of_kseqs){
-		printf("the number of clusters is > the number of random sequences, please choose -r and -k so that -r < -k\n");
+		printf("the number of clusters is > the number of random sequences, please choose -r and -b so that -r < -b\n");
 		exit(1);
 	}
 	if (opt.number_of_kseqs > fasta_specs[0] ){
@@ -4707,16 +4707,18 @@ int main(int argc, char **argv){
 			numbase[i] = strlen(cluster_seqs[i+1][random_number]);
 			rootSeqs[i]=(char *)malloc((numbase[i]+1)*(sizeof(char)));
 			strcpy(rootSeqs[i],cluster_seqs[i+1][random_number]);
-			FILE* root_sequences_file;
-			if ( first_time == 1 ){
-				if (( root_sequences_file = fopen("root_sequences.fasta","w")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
+			if ( opt.root[0] != '\0' ){
+				FILE* root_sequences_file;
+				if ( first_time == 1 ){
+					if (( root_sequences_file = fopen(opt.root,"w")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
+				}
+				if ( first_time ==0 ){
+					if (( root_sequences_file = fopen(opt.root,"a")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
+				}
+				fprintf(root_sequences_file,">random%d\n",i);
+				fprintf(root_sequences_file,"%s\n",rootSeqs[i]);
+				fclose(root_sequences_file);
 			}
-			if ( first_time ==0 ){
-				if (( root_sequences_file = fopen("root_sequences.fasta","a")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
-			}
-			fprintf(root_sequences_file,">random%d\n",i);
-			fprintf(root_sequences_file,"%s\n",rootSeqs[i]);
-			fclose(root_sequences_file);
 		}
 	}
 	free(rootArr);

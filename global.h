@@ -3,13 +3,12 @@
  */
 #include "needleman_wunsch.h"
 #include "hashmap.h"
-//#include "WFA/gap_affine/affine_wavefront.h"
 #ifndef _GLOBAL_
 #define _GLOBAL_
 
 #define FASTA_MAXLINE 6000
-#define MIN_SEQ 100
 #define MAXNAME 30
+#define MIN_SEQ 100
 #define MAX_FILENAME 100
 #define DISTMAX 30.0
 #define MINBL 0.00001
@@ -57,6 +56,7 @@ typedef struct Options{
 	int output_fasta;
 	int use_nw;
 	int number_of_desc;
+	char root[1000];
 }Options;
 
 typedef struct nw_alignment{

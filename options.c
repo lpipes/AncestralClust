@@ -4,17 +4,18 @@ static struct option long_options[]=
 {
 	{"help", no_argument, 0, 'h'},
 	{"infile", required_argument, 0, 'i'},
-	{"infile_taxonomy", optional_argument, 0, 't'},
-	{"number_of_clusters", optional_argument, 0, 'n'},
-	{"number_of_sequences", optional_argument, 0, 'k'},
-	{"directory", optional_argument, 0, 'd'},
-	{"threads", optional_argument, 0, 'c'},
-	{"output_file", optional_argument, 0, 'o'},
-	{"clstr_format", optional_argument, 0, 's'},
-	{"fasta_to_assign", optional_argument, 0, 'f'},
-	{"use_nw", optional_argument, 0, 'u'},
-	{"number_of_lines_to_read", optional_argument, 0, 'l'},
-	{"number_of_descendants", optional_argument, 0, 'p'},
+	{"infile_taxonomy", required_argument, 0, 't'},
+	{"number_of_clusters", required_argument, 0, 'n'},
+	{"number_of_sequences", required_argument, 0, 'k'},
+	{"directory", required_argument, 0, 'd'},
+	{"threads", required_argument, 0, 'c'},
+	{"output_file", required_argument, 0, 'o'},
+	{"clstr_format", no_argument, 0, 's'},
+	{"fasta_to_assign", no_argument, 0, 'f'},
+	{"use_nw", no_argument, 0, 'u'},
+	{"number_of_lines_to_read", required_argument, 0, 'l'},
+	{"number_of_descendants", required_argument, 0, 'p'},
+	{"root_seqs", required_argument, 0, 'q'},
 	{0,0,0,0}
 };
 
@@ -32,6 +33,7 @@ char usage[] = "\nancestralclust [OPTIONS]\n\
 	-u, --use_nw				use Needleman-Wunsch [default is WFA]\n\
 	-l, --number_of_lines_to_read		number of lines to read in from file [default: 10000]\n\
 	-p, --number_of_descendants		number of descendants to require to cut branch [default: 10]\n\
+	-q, --root_seqs				file to print root sequences\n\
 	\n";
 
 void print_help_statement(){
@@ -47,13 +49,17 @@ void parse_options(int argc, char **argv, Options *opt){
 		exit(0);
 	}
 	while(1){
-		c=getopt_long(argc,argv,"hfun:b:d:i:t:c:o:l:p:r:",long_options, &option_index);
+		c=getopt_long(argc,argv,"hfun:b:d:i:t:c:o:l:p:r:q:",long_options, &option_index);
 		if (c==-1) break;
 		switch(c){
 			case 'h':
 				print_help_statement();
 				exit(0);
 				break;
+			case 'q':
+				success = sscanf(optarg, "%s", opt->root);
+				if (!success)
+					fprintf(stderr, "Invalid root file\n");
 			case 'i':
 				success = sscanf(optarg, "%s", opt->fasta);
 				if (!success)
