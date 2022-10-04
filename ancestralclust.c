@@ -603,6 +603,11 @@ void *fillInMat_avg(void *ptr){
 	attributes.affine_penalties.mismatch =4;
 	attributes.affine_penalties.gap_opening = 6;
 	attributes.affine_penalties.gap_extension = 2;
+	attributes.alignment_form.span = alignment_endsfree;
+	//attributes.alignment_form.pattern_begin_free = 0;
+	//attributes.alignment_form.pattern_end_free = 0;
+	//attributes.alignment_form.text_begin_free = 0;
+	//attributes.alignment_form.text_end_free = 0;
 	// Initialize Wavefront Aligner
 	wavefront_aligner_t* const wf_aligner = wavefront_aligner_new(&attributes);
 	int i,j,k,l;
@@ -695,6 +700,7 @@ void *fillInMat(void *ptr){
 				attributes.affine_penalties.mismatch =4;
 				attributes.affine_penalties.gap_opening = 6;
 				attributes.affine_penalties.gap_extension = 2;
+				attributes.alignment_form.span = alignment_endsfree;
 				// Initialize Wavefront Aligner
 				wavefront_aligner_t* const wf_aligner = wavefront_aligner_new(&attributes);
 				wavefront_align(wf_aligner,dstr->seq[i],strlen(dstr->seq[i]),dstr->seq[j],strlen(dstr->seq[j])); //Align
@@ -1119,6 +1125,7 @@ double findShortestDist_WFA(int index, char* seq, int clusterSize, double** dist
 	attributes.affine_penalties.mismatch =4;
 	attributes.affine_penalties.gap_opening = 6;
 	attributes.affine_penalties.gap_extension = 2;
+	attributes.alignment_form.span = alignment_endsfree;
 	/*affine_penalties_t affine_penalties = {
 		.match = 0,
 		.mismatch =4,
@@ -3781,7 +3788,7 @@ void store_PPs(type_of_PP**** PP, int numberOfRoots,int* numspec, int* numbase){
 		}
 	}
 }
-void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int whichRoot, int* gapped, int first_time){
+void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int whichRoot, int* gapped, int first_time, Options opt){
 	type_of_PP minimum;
 	int index,i,j,k;
 	//for(i=0; i<numberOfRoots;i++){
@@ -3813,12 +3820,13 @@ void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int w
 	//}
 	//}
 	//for(i=0;i<numberOfRoots;i++){
+	if (opt.root[0] != '\0' ){
 		FILE* root_sequences_file;
 		if ( first_time == 1){
-			if (( root_sequences_file = fopen("root_sequences.fasta","w")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
+			if (( root_sequences_file = fopen(opt.root,"w")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
 		}
 		if ( first_time == 0 ){
-			if (( root_sequences_file = fopen("root_sequences.fasta","a")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
+			if (( root_sequences_file = fopen(opt.root,"a")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
 		}
 		fprintf(root_sequences_file,">%d\n",whichRoot);
 		for(j=0;j<numbase;j++){
@@ -3828,6 +3836,7 @@ void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int w
 		}
 		fprintf(root_sequences_file,"\n");
 		fclose(root_sequences_file);
+	}
 	//}
 }
 void swap(int* xp, int* yp){
@@ -4693,7 +4702,7 @@ int main(int argc, char **argv){
 			for(j=0; j<numbase[i]+1; j++){
 				rootSeqs[i][j]='\0';
 			}
-			printRootSeqs(rootSeqs,treeArr,numbase[i],rootArr[i],i,gapped,first_time);
+			printRootSeqs(rootSeqs,treeArr,numbase[i],rootArr[i],i,gapped,first_time,opt);
 			for(j=0; j<numbase[i]; j++){
 				free(treeArr[i][rootArr[i]].likenc[j]);
 				free(treeArr[i][rootArr[i]].posteriornc[j]);
