@@ -56,10 +56,6 @@ void parse_options(int argc, char **argv, Options *opt){
 				print_help_statement();
 				exit(0);
 				break;
-			case 'q':
-				success = sscanf(optarg, "%s", opt->root);
-				if (!success)
-					fprintf(stderr, "Invalid root file\n");
 			case 'i':
 				success = sscanf(optarg, "%s", opt->fasta);
 				if (!success)
@@ -116,6 +112,10 @@ void parse_options(int argc, char **argv, Options *opt){
 				if (!success)
 					fprintf(stderr, "Could not read number of threads\n");
 				break;
+			case 'q':
+				success = sscanf(optarg, "%s", opt->root);
+				if (!success)
+					fprintf(stderr, "Invalid root file\n");
 		}
 	}
 }
