@@ -5,8 +5,8 @@ AncestralClust was developed to cluster divergent sequences. A neighbor-joining 
 
 ancestralclust [OPTIONS]
 	
-	-h, --help				usage: -i [Input FASTA] -r [Integer <= Number of Sequences] -b [Integer > 1]
-	-i, --infile [REQUIRED]			fasta to cluster
+	-h, --help				usage: -i [Input FASTA] -r [Integer <= Number of Sequences] -k [Integer > 1]
+	-i, --infile [REQUIRED]			fasta to cluster [expects sequence in 1 line (i.e., without line breaks)]
 	-t, --infile_taxonomy [OPTIONAL]	taxonomy of fasta [Sorted in same order as FASTA, not used in clustering]
 	-b, --number_of_clusters [REQUIRED]	number of initial clusters [default: 10]
 	-r, --number_of_sequences [REQUIRED]	number of sequences in initial cluster [default: 100]
@@ -15,8 +15,9 @@ ancestralclust [OPTIONS]
 	-o, --output_file			output file
 	-f, --fasta_format			output fasta files for each cluster
 	-u, --use_nw				use Needleman-Wunsch [default is WFA]
-	-l, --number_of_lines_to_read		number of lines to read in from file
+	-l, --number_of_lines_to_read		number of lines to read in from file [default: 10000]
 	-p, --number_of_descendants		number of descendants to require to cut branch [default: 10]
+	-q, --root_seqs				file to print root sequences
 
 AncestralClust uses <a href="https://github.com/TimoLassmann/kalign">kalign3</a> to construct multiple sequence alignments, <a href="https://github.com/smarco/WFA">wavefront alignment algorithm</a> for pairwise alignments, and <a href="https://github.com/noporpoise/seq-align">needleman-wunsch alignment</a> for pairwise alignments if chosen by the user, and <a href="https://github.com/DavidLeeds/hashmap">David Leeds' hashmap</a> for taxonomy files if user chooses.
 
