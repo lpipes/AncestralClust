@@ -34,6 +34,10 @@ The only required arguments are the -i, --infile which is a FASTA file to be clu
 
 	FASTA_header\tdomain;phylum;class;order;family;genus;species
 
+AncestralClust also expects no line breaks in your FASTA file. You can remove linebreaks by (replace `test.fasta` with your infile FASTA):
+
+	sed -i ':a; $!N; /^>/!s/\n\([^>]\)/\1/; ta; P; D' test.fasta
+
 # Performance
 AncestralClust tends to have more even clusters (as measured by the Coefficient of Variation) with higher relative NMI for every taxonomic level than leading clustering software UCLUST measured from three different metabarcode libraries (16S, 18S, and COI).
 <img src="https://github.com/lpipes/AncestralClust/blob/master/RelativeNMI_species.png?raw=true">
