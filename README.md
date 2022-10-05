@@ -39,6 +39,14 @@ AncestralClust also expects no line breaks in your FASTA file. You can remove li
 
 	sed -i ':a; $!N; /^>/!s/\n\([^>]\)/\1/; ta; P; D' test.fasta
 
+Some examples on how to run AncestralClust. Using 500 initial sequences with an approximate 10 clusters:
+
+	ancestralclust -i SeqsToCluster.fasta -r 500 -b 10
+
+Printing out the fasta files for each cluster:
+
+	ancestralclust -i SeqsToCluster.fasta -r 500 -b 10 -d clusters -f
+
 # Performance
 AncestralClust tends to have more even clusters (as measured by the Coefficient of Variation) with higher relative NMI for every taxonomic level than leading clustering software UCLUST measured from three different metabarcode libraries (16S, 18S, and COI).
 <img src="https://github.com/lpipes/AncestralClust/blob/master/RelativeNMI_species.png?raw=true">
