@@ -15,7 +15,7 @@ jobs:
       - name: print gcc version
         run: gcc -v
       - name: build ancestralclust
-        run: make
+        run: make clean && make
         working-directory: ./
       - name: Archive ancestralclust binary
         uses: actions/upload-artifact@v3
