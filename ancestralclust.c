@@ -1136,48 +1136,47 @@ double findShortestDist_WFA(int index, char* seq, int clusterSize, double** dist
 		// Initialize Wavefront Aligner
 		wavefront_aligner_t* const wf_aligner = wavefront_aligner_new(&attributes);
 		//mm_allocator_t* const mm_allocator = mm_allocator_new(BUFFER_SIZE_8M);
-		char* seq1 = strdup(rootSeqs[index]);
-		char* seq2 = strdup(seq);
+		//char* seq1 = strdup(rootSeqs[index]);
+		//char* seq2 = strdup(seq);
 		/*affine_wavefronts_t* affine_wavefronts = affine_wavefronts_new_complete(strlen(seq1),strlen(seq2),&affine_penalties,NULL,mm_allocator);
 		affine_wavefronts_align(affine_wavefronts,seq1,strlen(seq1),seq2,strlen(seq2));
 		const int score = edit_cigar_score_gap_affine(&affine_wavefronts->edit_cigar,&affine_penalties);
 		//edit_cigar_print_pretty(stderr,seq1,strlen(seq1),seq2,strlen(seq2),&affine_wavefronts->edit_cigar,mm_allocator);
 		char* const pattern_alg = mm_allocator_calloc(mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
 		char* const text_alg = mm_allocator_calloc(mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);*/
-		wavefront_align(wf_aligner,seq1,strlen(seq1),seq2,strlen(seq2)); //Align
-		char* const pattern_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
-		char* const ops_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
-		char* const text_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(seq1)+strlen(seq2)+1,char,true);
-		int alignment_length_initial = perform_WFA_alignment(wf_aligner->cigar,wf_aligner->mm_allocator,seq1,seq2,pattern_alg,text_alg,ops_alg,wf_aligner->cigar->begin_offset,wf_aligner->cigar->end_offset);
-
+		wavefront_align(wf_aligner,rootSeqs[index],strlen(rootSeqs[index]),seq,strlen(seq)); //Align
+		char* const pattern_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(rootSeqs[index])+strlen(seq)+1,char,true);
+		char* const ops_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(rootSeqs[index])+strlen(seq)+1,char,true);
+		char* const text_alg = mm_allocator_calloc(wf_aligner->mm_allocator,strlen(rootSeqs[index])+strlen(seq)+1,char,true);
+		int alignment_length_initial = perform_WFA_alignment(wf_aligner->cigar,wf_aligner->mm_allocator,rootSeqs[index],seq,pattern_alg,text_alg,ops_alg,wf_aligner->cigar->begin_offset,wf_aligner->cigar->end_offset);
 		int k, alg_pos =0, pattern_pos= 0, text_pos =0;
 		for (k=wf_aligner->cigar->begin_offset;k<wf_aligner->cigar->end_offset;++k) {
 			switch (wf_aligner->cigar->operations[k]) {
 				case 'M':
-					if (seq1[pattern_pos] != seq2[text_pos]) {
-						pattern_alg[alg_pos] = seq1[pattern_pos];
-						text_alg[alg_pos++] = seq2[text_pos];
+					if (rootSeqs[index][pattern_pos] != seq[text_pos]) {
+						pattern_alg[alg_pos] = rootSeqs[index][pattern_pos];
+						text_alg[alg_pos++] = seq[text_pos];
 					}else{
-						pattern_alg[alg_pos] = seq1[pattern_pos];
-						text_alg[alg_pos++] = seq2[text_pos];
+						pattern_alg[alg_pos] = rootSeqs[index][pattern_pos];
+						text_alg[alg_pos++] = seq[text_pos];
 					}
 					pattern_pos++; text_pos++;
 					break;
 				case 'X':
-					if (seq1[pattern_pos] != seq2[text_pos]) {
-						pattern_alg[alg_pos] = seq1[pattern_pos++];
-						text_alg[alg_pos++] = seq2[text_pos++];
+					if (rootSeqs[index][pattern_pos] != seq[text_pos]) {
+						pattern_alg[alg_pos] = rootSeqs[index][pattern_pos++];
+						text_alg[alg_pos++] = seq[text_pos++];
 					}else{
-						pattern_alg[alg_pos] = seq1[pattern_pos++];
-						text_alg[alg_pos++] = seq2[text_pos++];
+						pattern_alg[alg_pos] = rootSeqs[index][pattern_pos++];
+						text_alg[alg_pos++] = seq[text_pos++];
 					}
 					break;
 				case 'I':
 					pattern_alg[alg_pos] = '-';
-					text_alg[alg_pos++] = seq2[text_pos++];
+					text_alg[alg_pos++] = seq[text_pos++];
 					break;
 				case 'D':
-					pattern_alg[alg_pos] = seq1[pattern_pos++];
+					pattern_alg[alg_pos] = rootSeqs[index][pattern_pos++];
 					text_alg[alg_pos++] = '-';
 					break;
 				default:
@@ -1185,12 +1184,12 @@ double findShortestDist_WFA(int index, char* seq, int clusterSize, double** dist
 			}
 		}
 		k=0;
-		while (pattern_pos < strlen(seq1)) {
-			pattern_alg[alg_pos+k] = seq1[pattern_pos++];
+		while (pattern_pos < strlen(rootSeqs[index])) {
+			pattern_alg[alg_pos+k] = rootSeqs[index][pattern_pos++];
 			++k;
 		}
-		while (text_pos < strlen(seq2)) {
-			text_alg[alg_pos+k] = seq2[text_pos++];
+		while (text_pos < strlen(seq)) {
+			text_alg[alg_pos+k] = seq[text_pos++];
 			++k;
 		}
 		int alignment_length = strlen(pattern_alg);
@@ -1202,8 +1201,8 @@ double findShortestDist_WFA(int index, char* seq, int clusterSize, double** dist
 		//affine_wavefronts_delete(affine_wavefronts);
 		//mm_allocator_delete(mm_allocator);
 		wavefront_aligner_delete(wf_aligner);
-		free(seq1);
-		free(seq2);
+		//free(seq1);
+		//free(seq2);
 	}
 	double shortestDist = 1;
 	for(i=0; i<clusterSize; i++){
