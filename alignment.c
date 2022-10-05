@@ -20,7 +20,7 @@
 #include "malloc-2.8.3.h"
 #include "lran2.h"
 
-pthread_mutex_t lock;
+// pthread_mutex_t lock;
 //const char align_col_mismatch[] = "\033[92m"; // Mismatch (GREEN)
 //const char align_col_indel[] = "\033[91m"; // Insertion / deletion (RED)
 // Pink used by SmithWaterman local alignment for printing surrounding bases
