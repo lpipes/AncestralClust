@@ -14,6 +14,9 @@ jobs:
         uses: actions/checkout@v2
       - name: print gcc version
         run: gcc -v
+      - name: clean ancestralclust
+        run: make clean
+        working-directory: ./
       - name: build ancestralclust
         run: make
         working-directory: ./
