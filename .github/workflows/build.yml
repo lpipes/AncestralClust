@@ -22,7 +22,7 @@ jobs:
         working-directory: .
       - name: Archive ancestralclust binary
         uses: actions/upload-artifact@v3
-        with:/
+        with:
           name: ancestralclust
           path: ancestralclust
       - name: clean ancestralclust
@@ -35,6 +35,6 @@ jobs:
         run: mv ancestralclust ancestralclust-debug
       - name: Archive ancestralclust-debug binary
         uses: actions/upload-artifact@v3
-        with:/
+        with:
           name: ancestralclust-debug
           path: ancestralclust-debug
