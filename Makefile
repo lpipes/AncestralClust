@@ -8,7 +8,7 @@ CFLAGS = -w -pg
 DBGCFLAGS = -g -w -fopenmp
 # -lm links the math library
 #LIBS = -lm -lpthread -lz
-LIBS = -lm -pthread -lz
+LIBS = -lm -pthread -lz -std=gnu99
 OPENMP = -fopenmp
 OPTIMIZATION = -O3 -march=native
 #sources

@@ -16,7 +16,7 @@
 char*** clusters;
 //char** seqNames;
 //char** sequences;
-// pthread_mutex_t lock;
+pthread_mutex_t lock;
 double LRVECnc[4][4], RRVECnc[4][4], RRVALnc[4], PMATnc[2][4][5];
 double LRVEC[STATESPACE][STATESPACE], RRVEC[STATESPACE][STATESPACE], RRVAL[STATESPACE], PMAT1[STATESPACE][STATESPACE], PMAT2[STATESPACE][STATESPACE];
 double parameters[10] = {0.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0};
@@ -3787,14 +3787,16 @@ void store_PPs(type_of_PP**** PP, int numberOfRoots,int* numspec, int* numbase){
 		}
 	}
 }
-void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int whichRoot, int* gapped, int first_time, Options opt){
+int printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int whichRoot, int* gapped, int first_time, Options opt){
 	type_of_PP minimum;
 	int index,i,j,k;
+	int counter=0;
 	//for(i=0; i<numberOfRoots;i++){
 	//printf("NUMBASE: %d\n",numbase);
 	//if ( clusterSize[i+1] > 3){
 	for(j=0;j<numbase;j++){
 		//minimum=PP[i][rootArr[i]][j][0];
+		if ( gapped [j] != 1){
 		minimum=1.0-treeArr[whichRoot][root].posteriornc[j][0];
 		index=0;
 		for(k=0;k<4;k++){
@@ -3811,14 +3813,23 @@ void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int w
 		else if (index ==1 ){ base='C'; }
 		else if (index==2 ){ base='G'; }
 		else if (index==3 ){base='T'; }
-		rootSeqs[whichRoot][j]=base;
+		rootSeqs[whichRoot][counter]=base;
+		counter++;
+		}
 	}
-	rootSeqs[whichRoot][numbase]='\0';
+	rootSeqs[whichRoot][counter]='\0';
 	//}else{
 	//	strcpy(rootSeqs[i],cluster_seqs[i+1][0]);
 	//}
 	//}
 	//for(i=0;i<numberOfRoots;i++){
+	int new_numbase=0;
+	for(j=0; j<numbase; j++){
+		if ( rootSeqs[whichRoot][j] =='\0' ){
+			new_numbase = j;
+			break;
+		}
+	}
 	if (opt.root[0] != '\0' ){
 		FILE* root_sequences_file;
 		if ( first_time == 1){
@@ -3828,15 +3839,16 @@ void printRootSeqs(char** rootSeqs, node** treeArr, int numbase, int root, int w
 			if (( root_sequences_file = fopen(opt.root,"a")) == (FILE *) NULL ) fprintf(stderr,"FASTA file could not be opened.\n");
 		}
 		fprintf(root_sequences_file,">%d\n",whichRoot);
-		for(j=0;j<numbase;j++){
-			if ( gapped[j] != 1 ){
+		for(j=0;j<new_numbase;j++){
+			//if ( gapped[j] != 1 ){
 				fprintf(root_sequences_file,"%c",rootSeqs[whichRoot][j]);
-			}
+			//}
 		}
 		fprintf(root_sequences_file,"\n");
 		fclose(root_sequences_file);
 	}
 	//}
+	return new_numbase;
 }
 void swap(int* xp, int* yp){
 	int temp = *xp;
@@ -4468,6 +4480,7 @@ int main(int argc, char **argv){
 			}
 		}
 	}*/
+	int how_many_cuts = numberOfNodesToCut;
 	printf("made %d cuts\n",numberOfNodesToCut);
 	free(indexArray);
 	//struct hashmap clusterhash;
@@ -4553,7 +4566,7 @@ int main(int argc, char **argv){
 	//	strcpy(cluster_seqs[numberOfNodesToCut-1][i],cluster_seqs[0][j]);
 	//}
 	double average_distance=0;
-	if ( numberOfNodesToCut > 2){
+	if ( numberOfNodesToCut > 2 && how_many_cuts > 1 ){
 		average_distance = calculateAverageDistanceBetweenClusters(tree,kseqs,numberOfNodesToCut,distMatForAVG);
 	}else{
 		average_distance = 1;
@@ -4701,7 +4714,7 @@ int main(int argc, char **argv){
 			for(j=0; j<numbase[i]+1; j++){
 				rootSeqs[i][j]='\0';
 			}
-			printRootSeqs(rootSeqs,treeArr,numbase[i],rootArr[i],i,gapped,first_time,opt);
+			int new_numbase=printRootSeqs(rootSeqs,treeArr,numbase[i],rootArr[i],i,gapped,first_time,opt);
 			for(j=0; j<numbase[i]; j++){
 				free(treeArr[i][rootArr[i]].likenc[j]);
 				free(treeArr[i][rootArr[i]].posteriornc[j]);
@@ -4709,6 +4722,7 @@ int main(int argc, char **argv){
 			free(treeArr[i][rootArr[i]].likenc);
 			free(treeArr[i][rootArr[i]].posteriornc);
 			free(treeArr[i]);
+			numbase[i] = new_numbase;
 		}else{
 			int random_number = generateRandom(clusterSize[i+1]-1);
 			//printf("random: %d clusterSize: %d\n",random_number,clusterSize[i+1]);
