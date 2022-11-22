@@ -19,9 +19,22 @@ jobs:
         working-directory: ./
       - name: build ancestralclust
         run: make
-        working-directory: ./
+        working-directory: .
       - name: Archive ancestralclust binary
         uses: actions/upload-artifact@v3
         with:
           name: ancestralclust
           path: ancestralclust
+      - name: clean ancestralclust
+        run: make clean
+        working-directory: ./
+      - name: build ancestralclust debug
+        run: make debug
+        working-directory: .
+      - name: Rename ancestralclust binary
+        run: mv ancestralclust ancestralclust-debug
+      - name: Archive ancestralclust-debug binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: ancestralclust-debug
+          path: ancestralclust-debug
