@@ -39,7 +39,7 @@ AncestralClust also expects no line breaks in your FASTA file. You can remove li
 
 	sed -i ':a; $!N; /^>/!s/\n\([^>]\)/\1/; ta; P; D' test.fasta
 
-Some examples on how to run AncestralClust. Using 500 initial sequences with an approximate 10 clusters:
+AncestralClust also expects that your sequences only contain A, G, C, T, or N (no ambiguous nucleotides or gaps `-`). Some examples on how to run AncestralClust. Using 500 initial sequences with an approximate 10 clusters:
 
 	ancestralclust -i SeqsToCluster.fasta -r 500 -b 10
 
