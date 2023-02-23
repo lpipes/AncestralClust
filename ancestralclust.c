@@ -4071,7 +4071,7 @@ double calculateAverageDistanceBetweenClusters(node** tree, int number_of_leaves
 	//double* distances = (double*)malloc(number_of_combinations*sizeof(double));
 	//double distances[number_of_combinations];
 	//need to fix this
-	double distances[9999];
+	double distances[2*number_of_combinations];
 	for(i=1; i<number_of_clusters-1; i++){
 		for(j=i+1; j<number_of_clusters-1; j++){
 			totalDistance1=0;
