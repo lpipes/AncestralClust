@@ -7,6 +7,9 @@
 #include <dirent.h>
 #include <regex.h>
 #include <zlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "needleman_wunsch.h"
 #include "global.h"
 #include "hashmap.h"
@@ -2039,6 +2042,10 @@ void printInitialClusters(int starting_number_of_clusters,int number_of_clusters
 	FILE *tax;
 	char fileName[MAX_FILENAME];
 	//check to see if directory exitsts;
+	struct stat st = {0};
+	if ( stat(opt.output_directory, &st) == -1){
+		mkdir(opt.output_directory, 0700);
+	}
 	char *directory = strdup(opt.output_directory);
 	int i,j,k;
 	for(i=1; i<number_of_clusters; i++){
@@ -2121,6 +2128,10 @@ void printCLSTR(Options opt, char*** clstr, int ** clstr_lengths, int total_numb
 	char fileName[MAX_FILENAME];
 	char *directory = strdup(opt.output_directory);
 	int i,j,k;
+	struct stat st = {0};
+	if ( stat(opt.output_directory, &st) == -1){
+		mkdir(opt.output_directory, 0700);
+	}
 	if ( opt.output_file[0] == '\0' ){
 		strcpy(opt.output_file,"output.clstr");
 	}
