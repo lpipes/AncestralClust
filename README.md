@@ -18,6 +18,8 @@ ancestralclust [OPTIONS]
 	-l, --number_of_lines_to_read		number of lines to read in from file [default: 10000]
 	-p, --number_of_descendants		number of descendants to require to cut branch [default: 10]
 	-q, --root_seqs				file to print root sequences
+	-a, --set_average			set the average branch length [double > 0, default: calculates averge]
+	
 
 AncestralClust uses <a href="https://github.com/TimoLassmann/kalign">kalign3</a> to construct multiple sequence alignments, <a href="https://github.com/smarco/WFA">wavefront alignment algorithm</a> for pairwise alignments, and <a href="https://github.com/noporpoise/seq-align">needleman-wunsch alignment</a> for pairwise alignments if chosen by the user, and <a href="https://github.com/DavidLeeds/hashmap">David Leeds' hashmap</a> for taxonomy files if user chooses.
 

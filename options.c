@@ -16,6 +16,7 @@ static struct option long_options[]=
 	{"number_of_lines_to_read", required_argument, 0, 'l'},
 	{"number_of_descendants", required_argument, 0, 'p'},
 	{"root_seqs", required_argument, 0, 'q'},
+	{"set_average", required_argument, 0, 'a'},
 	{0,0,0,0}
 };
 
@@ -34,6 +35,7 @@ char usage[] = "\nancestralclust [OPTIONS]\n\
 	-l, --number_of_lines_to_read		number of lines to read in from file [default: 10000]\n\
 	-p, --number_of_descendants		number of descendants to require to cut branch [default: 10]\n\
 	-q, --root_seqs				file to print root sequences\n\
+	-a, --set_average			set the average branch length [double > 0, default: calculates averge]\n\
 	\n";
 
 void print_help_statement(){
@@ -49,7 +51,7 @@ void parse_options(int argc, char **argv, Options *opt){
 		exit(0);
 	}
 	while(1){
-		c=getopt_long(argc,argv,"hfun:b:d:i:t:c:o:l:p:r:q:",long_options, &option_index);
+		c=getopt_long(argc,argv,"hfun:b:d:i:t:c:o:l:p:r:q:a:",long_options, &option_index);
 		if (c==-1) break;
 		switch(c){
 			case 'h':
@@ -63,6 +65,11 @@ void parse_options(int argc, char **argv, Options *opt){
 				break;
 			case 'f':
 				opt->output_fasta=1;
+				break;
+			case 'a':
+				success = sscanf(optarg,"%lf", &(opt->average));
+				if (!success)
+					fprintf(stderr, "Invalid double\n");
 				break;
 			case 'u':
 				opt->use_nw=1;

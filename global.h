@@ -56,6 +56,7 @@ typedef struct Options{
 	int output_fasta;
 	int use_nw;
 	int number_of_desc;
+	double average;
 	char root[1000];
 }Options;
 

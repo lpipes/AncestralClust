@@ -4166,6 +4166,7 @@ int main(int argc, char **argv){
 	opt.use_nw=0;
 	opt.number_of_desc=10;
 	opt.numberOfLinesToRead=10000;
+	opt.average=-1.0;
 	strcpy(opt.output_directory,"");
 	memset(opt.output_file,'\0',2000);
 	memset(opt.root,'\0',1000);
@@ -4960,7 +4961,11 @@ int main(int argc, char **argv){
 	mystruct mstr[opt.numthreads];
 	for(i=0; i<opt.numthreads; i++){
 		mstr[i].str = malloc(sizeof(struct resultsStruct));
-		mstr[i].average = average_distance;
+		if (opt.average != -1.0){
+			mstr[i].average = opt.average;
+		}else{
+			mstr[i].average = average_distance;
+		}
 		mstr[i].clusterSize = clusterSize;
 		mstr[i].number_of_kseqs = kseqs;
 		mstr[i].numAssigned = 0;
