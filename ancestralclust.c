@@ -4049,6 +4049,11 @@ int readInXNumberOfLines(int numberOfLinesToRead, gzFile query_reads, int* assig
 				iter++;
 				skipped[m]=-1;
 				m++;
+			}else if ( buffer[0] == '>' && assignedSeqs[iter]==1 ){
+				save_seq=0;
+				iter++;
+				skipped[m]=-1;
+				m++;
 			}else if ( buffer[0] == '>'){
 				iter++;
 				save_seq=0;	
