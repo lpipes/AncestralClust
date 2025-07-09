@@ -12,8 +12,6 @@
 #include <pthread.h>
 #include "needleman_wunsch.h"
 
-pthread_mutex_t lock;
-
 nw_aligner_t* needleman_wunsch_new()
 {
   nw_aligner_t *nw = calloc(1, sizeof(nw_aligner_t));
@@ -38,9 +36,7 @@ void needleman_wunsch_align2(const char *a, const char *b,
                              const scoring_t *scoring,
                              nw_aligner_t *nw, alignment_t *result)
 {
-	//pthread_mutex_lock(&lock);
   aligner_align(nw, a, b, len_a, len_b, scoring, 0);
-	//pthread_mutex_unlock(&lock);
   // work backwards re-tracing optimal alignment, then shift sequences into place
 
   // note: longest_alignment = strlen(seq_a) + strlen(seq_b)
@@ -111,10 +107,8 @@ void needleman_wunsch_align2(const char *a, const char *b,
 
     if(score_x > 0 && score_y > 0)
     {
-      //pthread_mutex_lock(&lock);
 	    alignment_reverse_move(&curr_matrix, &curr_score,
                              &score_x, &score_y, &arr_index, nw);
-    	//pthread_mutex_unlock(&lock);
     }
   }
 
@@ -143,12 +137,6 @@ void needleman_wunsch_align2(const char *a, const char *b,
   // Use memmove
   memmove(alignment_a, alignment_a+first_char, alignment_len);
   memmove(alignment_b, alignment_b+first_char, alignment_len);
-//pthread_mutex_lock(&lock);
-  //strcpy(alignment_a,alignment_a+first_char);
-//strcpy(alignment_b,alignment_b+first_char);
-//pthread_mutex_unlock(&lock);
-  //	alignment_a=strdup(alignment_a+first_char);
-//	alignment_b=strdup(alignment_b+first_char);
   alignment_a[alignment_len] = '\0';
   alignment_b[alignment_len] = '\0';
 

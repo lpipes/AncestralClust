@@ -1,5 +1,4 @@
 #include "math.h"
-#include <math.h>
 
 double LnGamma (double alpha)
 {
